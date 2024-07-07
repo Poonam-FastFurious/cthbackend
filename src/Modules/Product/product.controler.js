@@ -88,6 +88,8 @@ const addProduct = async (req, res) => {
       subCategory,
       status,
       visibility,
+      type,
+      itemType
     });
 
     return res.status(201).json({
@@ -161,19 +163,7 @@ const getSingleProduct = asyncHandler(async (req, res) => {
 });
 const updateProduct = asyncHandler(async (req, res) => {
   const {
-    id,
-    productTitle,
-    description,
-    oneTimePrice,
-    subscriptionPrice,
-    categoryId,
-    productShortDescription,
-    discountPercentage,
-    rating,
-    stock,
-    status,
-    visibility,
-    productTags,
+    id
   } = req.body;
 
   // Check if ID is provided
@@ -197,6 +187,8 @@ const updateProduct = asyncHandler(async (req, res) => {
     "status",
     "visibility",
     "productTags",
+    "type",
+    "itemType"
   ];
 
   // Iterate over fields and add to updateFields if provided

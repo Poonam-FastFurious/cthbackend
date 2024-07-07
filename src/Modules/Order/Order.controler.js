@@ -4,13 +4,13 @@ import { ApiError } from "../../utils/ApiError.js";
 import { Order } from "./Order.model.js"; // Assuming this is the correct path to your Order model
 
 const placeOrder = asyncHandler(async (req, res) => {
-  const { customerId, products, totalAmount, shippingInfo, paymentInfo } =
+  const { customerId, productId, totalAmount, shippingInfo, paymentInfo } =
     req.body;
 
   // Validate required fields
   if (
     !customerId ||
-    !products ||
+    !productId ||
     !totalAmount ||
     !shippingInfo ||
     !paymentInfo
@@ -22,7 +22,7 @@ const placeOrder = asyncHandler(async (req, res) => {
     // Create the order
     const order = await Order.create({
       customer: customerId,
-      products,
+      productId,
       totalAmount,
       shippingInfo,
       paymentInfo,
