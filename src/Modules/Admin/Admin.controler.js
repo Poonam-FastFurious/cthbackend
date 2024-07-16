@@ -11,9 +11,9 @@ const initializeAdmin = asyncHandler(async (req, res) => {
 
     if (!admin) {
       const adminuser = new Admin({
-        username: "HarshilSaini",
-        password: "Harshil@1234",
-        email: "Harshilsaini7@gmail.com",
+        username: "admin",
+        password: "admin@123",
+        email: "admin@gmail.com",
         profilePhoto:
           "https://themesbrand.com/velzon/html/master/assets/images/users/avatar-1.jpg",
       });

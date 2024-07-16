@@ -1,7 +1,7 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-import { Banner } from "./Banner.model.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
+import { Banner } from "./Banner.model.js";
 
 const uploadBanner = asyncHandler(async (req, res) => {
   try {
@@ -9,9 +9,9 @@ const uploadBanner = asyncHandler(async (req, res) => {
       throw new ApiError(400, "Request body is missing or empty");
     }
 
-    const { title, details, link } = req.body;
+    const { title, link, type, status } = req.body;
 
-    if (![title, details, link].every((field) => field?.trim())) {
+    if (![title, link, status].every((field) => field?.trim())) {
       throw new ApiError("All fields are required");
     }
 
@@ -28,8 +28,9 @@ const uploadBanner = asyncHandler(async (req, res) => {
     const banner = await Banner.create({
       image: uploadedImage.url,
       title,
-      details,
       link,
+      type,
+      status,
     });
 
     return res.status(201).json({
@@ -49,7 +50,7 @@ const uploadBanner = asyncHandler(async (req, res) => {
 const editBanner = asyncHandler(async (req, res) => {
   try {
     const { id } = req.body;
-    const { title, details, link } = req.body;
+    const { title, details, link, type, status } = req.body;
 
     // Find the banner by id
     const banner = await Banner.findById(id);
@@ -63,6 +64,7 @@ const editBanner = asyncHandler(async (req, res) => {
     if (title) banner.title = title;
     if (details) banner.details = details;
     if (link) banner.link = link;
+    if (status) banner.status = status;
 
     // If image is being updated
     if (req.files && req.files.image) {
