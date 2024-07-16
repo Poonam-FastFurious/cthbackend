@@ -20,7 +20,7 @@ app.use(cookieParser());
 import adminrouter from "../src/Modules/Admin/Admin.routes.js";
 import userrouter from "../src/Modules/CTHUser/User.routes.js";
 import Banner from "../src/Modules/Banner/Banner.routes.js";
-import privacy from "../src/Modules/Privacypolicy/Privacypolicy.routes.js";
+import privacy from "../src/Modules/PrivacyPolicy/Privacypolicy.routes.js";
 import termscondtion from "../src/Modules/TermAndConditions/Termscondition.routes.js";
 import blogs from "../src/Modules/Blog/Blog.routes.js";
 import Sliders from "../src/Modules/Slider/Slider.routes.js";
