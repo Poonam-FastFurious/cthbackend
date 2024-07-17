@@ -28,6 +28,7 @@ import ReturnPolicy from "../src/Modules/ReturnPolicy/ReturnPolicy.routes.js";
 import faqs from "../src/Modules/FAQS/Faq.routes.js";
 import testimonials from "../src/Modules/Testimonial/Testimonial.routes.js";
 import Gallery from "../src/Modules/Gallery/Gallery.routes.js";
+import associatemember from "../src/Modules/Associatemember/Associate.routes.js";
 
 //routes declearetion
 app.use("/api/v1/admin", adminrouter);
@@ -41,5 +42,6 @@ app.use("/api/v1/Returnpolicy", ReturnPolicy);
 app.use("/api/v1/faq", faqs);
 app.use("/api/v1/testimonial", testimonials);
 app.use("/api/v1/gallery", Gallery);
+app.use("/api/v1/associate", associatemember);
 
 export { app };

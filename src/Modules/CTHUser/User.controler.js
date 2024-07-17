@@ -162,4 +162,79 @@ const getAllUsers = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, users, "All users fetched successfully"));
 });
-export { registerUser, loginUser, getAllUsers };
+
+const updateUser = asyncHandler(async (req, res) => {
+  const {
+    userId, // Ensure userId is in the request body
+    firstName,
+    lastName,
+    username,
+    contactNumber,
+    emailAddress,
+    linkedinProfile,
+    address,
+    skills,
+    academicProjects,
+    honoursAndCertifications,
+  } = req.body;
+
+  // Validate user ID
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  // Fetch the user to ensure they exist
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Prepare the update object
+  const updateData = {
+    firstName: firstName || user.firstName,
+    lastName: lastName || user.lastName,
+    username: username || user.username, // Update username
+    contactNumber: contactNumber || user.contactNumber,
+    emailAddress: emailAddress || user.emailAddress,
+    linkedinProfile: linkedinProfile || user.linkedinProfile,
+    address: address || user.address,
+    skills: skills || user.skills,
+    academicProjects: academicProjects || user.academicProjects,
+    honoursAndCertifications:
+      honoursAndCertifications || user.honoursAndCertifications,
+  };
+
+  // Update the user
+  const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+    new: true,
+    runValidators: true,
+  }).select("-refreshToken");
+
+  if (!updatedUser) {
+    throw new ApiError(500, "Something went wrong while updating the user");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "User updated successfully"));
+});
+const deleteUser = asyncHandler(async (req, res) => {
+  const { userId } = req.query; // Expecting userId as a query parameter
+
+  // Validate user ID
+  if (!userId || !mongoose.isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid or missing user ID");
+  }
+
+  // Find and delete the user
+  const deletedUser = await User.findByIdAndDelete(userId);
+  if (!deletedUser) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "User deleted successfully"));
+});
+
+export { registerUser, loginUser, getAllUsers, updateUser, deleteUser };

@@ -65,6 +65,7 @@ const editBanner = asyncHandler(async (req, res) => {
     if (details) banner.details = details;
     if (link) banner.link = link;
     if (status) banner.status = status;
+    if (type) banner.type = type;
 
     // If image is being updated
     if (req.files && req.files.image) {

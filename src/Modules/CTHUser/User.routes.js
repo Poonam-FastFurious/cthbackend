@@ -1,5 +1,11 @@
 import { Router } from "express";
-import { getAllUsers, loginUser, registerUser } from "./User.controler.js";
+import {
+  deleteUser,
+  getAllUsers,
+  loginUser,
+  registerUser,
+  updateUser,
+} from "./User.controler.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
 
 const router = Router();
@@ -15,4 +21,6 @@ router.route("/register").post(
 );
 router.route("/login").post(loginUser);
 router.route("/alluser").get(getAllUsers);
+router.route("/update").patch(updateUser);
+router.route("/delete").delete(deleteUser);
 export default router;
