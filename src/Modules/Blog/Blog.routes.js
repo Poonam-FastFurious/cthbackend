@@ -1,6 +1,12 @@
 import { Router } from "express";
 
-import { createBlogPost, getAllBlogs } from "./Blog.controler.js";
+import {
+  createBlogPost,
+  deleteBlog,
+  editBlog,
+  getAllBlogs,
+  getSingleBlog,
+} from "./Blog.controler.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
 
 const router = Router();
@@ -15,6 +21,15 @@ router.post(
   createBlogPost
 );
 router.get("/allblogs", getAllBlogs);
-// router.route("/delete").delete(deleteBlogPost);
+router.get("/singleblogs", getSingleBlog);
+router.route("/delete").delete(deleteBlog);
+router.patch(
+  "/edit",
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "thumbnail", maxCount: 10 },
+  ]),
+  editBlog
+);
 
 export default router;
