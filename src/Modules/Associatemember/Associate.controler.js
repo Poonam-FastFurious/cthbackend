@@ -3,65 +3,87 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { AssociateMember } from "./Associate.model.js";
 import { User } from "../CTHUser/User.model.js";
+import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
 
 const addAssociateMember = asyncHandler(async (req, res) => {
-  const { firstName, experience, designation, status } = req.body;
+  try {
+    const { firstName, experience, designation, status } = req.body;
 
-  // Validate required fields
-  if (
-    [firstName, experience, designation, status].some(
-      (field) => field?.trim() === ""
-    )
-  ) {
-    throw new ApiError(
-      400,
-      "First Name, Experience, Designation, and Status are required"
-    );
-  }
-
-  // Check if the user exists by first name
-  const user = await User.findOne({ firstName });
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
-
-  // Check if the user is already an associate member
-  const existingAssociateMember = await AssociateMember.findOne({
-    user: user._id,
-  });
-  if (existingAssociateMember) {
-    throw new ApiError(409, "User is already an associate member");
-  }
-
-  // Create associate member object
-  const associateMember = await AssociateMember.create({
-    user: user._id,
-    experience,
-    designation,
-    status,
-  });
-
-  // Fetch created associate member with user details
-  const createdAssociateMember = await AssociateMember.findById(
-    associateMember._id
-  ).populate("user", "-refreshToken");
-
-  if (!createdAssociateMember) {
-    throw new ApiError(
-      500,
-      "Something went wrong while adding the associate member"
-    );
-  }
-
-  return res
-    .status(201)
-    .json(
-      new ApiResponse(
-        201,
-        createdAssociateMember,
-        "Associate member added successfully"
+    // Validate required fields
+    if (
+      ![firstName, experience, designation, status].every((field) =>
+        field?.trim()
       )
-    );
+    ) {
+      throw new ApiError(
+        400,
+        "First Name, Experience, Designation, and Status are required"
+      );
+    }
+
+    // Check if the user exists by first name
+    const user = await User.findOne({ firstName });
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // Check if the user is already an associate member
+    const existingAssociateMember = await AssociateMember.findOne({
+      user: user._id,
+    });
+    if (existingAssociateMember) {
+      throw new ApiError(409, "User is already an associate member");
+    }
+
+    // Handle image upload
+    const imageLocalPath = req.files?.image[0]?.path;
+    if (!imageLocalPath) {
+      throw new ApiError(400, "Image file is required");
+    }
+
+    const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+    if (!uploadedImage) {
+      throw new ApiError(500, "Failed to upload image");
+    }
+
+    // Create associate member object
+    const associateMember = await AssociateMember.create({
+      user: user._id,
+      experience,
+      designation,
+      status,
+      image: uploadedImage.url, // Save the image URL
+    });
+
+    // Fetch created associate member with user details
+    const createdAssociateMember = await AssociateMember.findById(
+      associateMember._id
+    ).populate("user", "-refreshToken");
+
+    if (!createdAssociateMember) {
+      throw new ApiError(
+        500,
+        "Something went wrong while adding the associate member"
+      );
+    }
+
+    return res
+      .status(201)
+      .json(
+        new ApiResponse(
+          201,
+          createdAssociateMember,
+          "Associate member added successfully"
+        )
+      );
+  } catch (error) {
+    console.error("Error during associate member creation:", error);
+
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
 });
 
 const editAssociateMember = asyncHandler(async (req, res) => {
