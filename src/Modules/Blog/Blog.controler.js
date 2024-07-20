@@ -256,7 +256,7 @@ const getSingleBlog = asyncHandler(async (req, res) => {
 });
 const markBlogAsRead = asyncHandler(async (req, res) => {
   try {
-    const { id } = req.query; // Assuming ID is passed as a URL parameter
+    const { id } = req.body; // Assuming ID is passed as a URL parameter
 
     if (!id) {
       throw new ApiError(400, "Blog ID is required");
