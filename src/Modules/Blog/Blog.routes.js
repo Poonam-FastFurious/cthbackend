@@ -1,13 +1,16 @@
 import { Router } from "express";
 
 import {
+  addComment,
   createBlogPost,
   deleteBlog,
   editBlog,
   getAllBlogs,
   getSingleBlog,
+  markBlogAsRead,
 } from "./Blog.controler.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
+import { verifyJWT } from "../../middlewares/auth.middlwares.js";
 
 const router = Router();
 
@@ -23,6 +26,8 @@ router.post(
 router.get("/allblogs", getAllBlogs);
 router.get("/singleblogs", getSingleBlog);
 router.route("/delete").delete(deleteBlog);
+router.route("/read").patch(markBlogAsRead);
+router.route("/coments").patch(verifyJWT, addComment);
 router.patch(
   "/edit",
   upload.fields([

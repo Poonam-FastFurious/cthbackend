@@ -22,15 +22,8 @@ const createBlogPost = asyncHandler(async (req, res) => {
       );
     }
 
-    let thumbnailUrl = req.body.thumbnail; // Default to the provided thumbnail URL
+    let thumbnailUrls = req.body.thumbnail; // Default to the provided thumbnail URL(s)
     let imageUrl = req.body.image; // Default to the provided image URL
-
-    // Upload thumbnail image to Cloudinary if a local file path is provided
-    if (req.files?.thumbnail) {
-      const thumbnailLocalPath = req.files.thumbnail[0].path;
-      const uploadedThumbnail = await uploadOnCloudinary(thumbnailLocalPath);
-      thumbnailUrl = uploadedThumbnail.url;
-    }
 
     // Upload main image to Cloudinary if a local file path is provided
     if (req.files?.image) {
@@ -39,12 +32,24 @@ const createBlogPost = asyncHandler(async (req, res) => {
       imageUrl = uploadedImage.url;
     }
 
+    // Upload thumbnail images to Cloudinary if local file paths are provided
+    if (req.files?.thumbnail) {
+      thumbnailUrls = await Promise.all(
+        req.files.thumbnail.map(async (file) => {
+          const uploadedThumbnail = await uploadOnCloudinary(file.path);
+          return uploadedThumbnail.url;
+        })
+      );
+    } else if (typeof thumbnailUrls === "string") {
+      thumbnailUrls = [thumbnailUrls]; // Ensure it's an array if only a single URL is provided
+    }
+
     const blogPostData = {
       image: imageUrl,
       title,
       description,
       content,
-      thumbnail: thumbnailUrl,
+      thumbnail: thumbnailUrls, // Use the array of URLs
       tags: tags.split(","), // Assuming tags are provided as a comma-separated string
       category,
       author, // Assuming author details are provided as a JSON string
@@ -70,6 +75,7 @@ const createBlogPost = asyncHandler(async (req, res) => {
     }
   }
 });
+
 const getAllBlogs = asyncHandler(async (req, res) => {
   try {
     const blogs = await Blog.find(); // Fetch all blog posts from the database
@@ -248,5 +254,97 @@ const getSingleBlog = asyncHandler(async (req, res) => {
     }
   }
 });
+const markBlogAsRead = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.query; // Assuming ID is passed as a URL parameter
 
-export { createBlogPost, getAllBlogs, deleteBlog, editBlog, getSingleBlog };
+    if (!id) {
+      throw new ApiError(400, "Blog ID is required");
+    }
+
+    // Fetch the blog post by ID
+    const blogPost = await Blog.findById(id);
+
+    if (!blogPost) {
+      throw new ApiError(404, "Blog post not found");
+    }
+
+    // Increment the views count
+    blogPost.views += 1;
+    await blogPost.save();
+
+    return res.status(200).json({
+      success: true,
+      data: blogPost,
+      message: "Blog marked as read",
+    });
+  } catch (err) {
+    // Handle any errors
+    if (err instanceof ApiError) {
+      ApiError.handleError(err, res);
+    } else {
+      // Handle unexpected errors
+      const apiError = new ApiError(500, "An unexpected error occurred", [
+        err.message,
+      ]);
+      ApiError.handleError(apiError, res);
+    }
+  }
+});
+const addComment = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.query; // Assuming ID is passed as a URL parameter
+    const { comment } = req.body;
+
+    if (!id) {
+      throw new ApiError(400, "Blog ID is required");
+    }
+
+    if (!comment) {
+      throw new ApiError(400, "Comment is required");
+    }
+
+    // Fetch the blog post by ID
+    const blogPost = await Blog.findById(id);
+
+    if (!blogPost) {
+      throw new ApiError(404, "Blog post not found");
+    }
+
+    // Add the comment
+    blogPost.comments.push({
+      user: req.user._id,
+      comment,
+      replies: [],
+    });
+
+    await blogPost.save();
+
+    return res.status(200).json({
+      success: true,
+      data: blogPost,
+      message: "Comment added successfully",
+    });
+  } catch (err) {
+    // Handle any errors
+    if (err instanceof ApiError) {
+      ApiError.handleError(err, res);
+    } else {
+      // Handle unexpected errors
+      const apiError = new ApiError(500, "An unexpected error occurred", [
+        err.message,
+      ]);
+      ApiError.handleError(apiError, res);
+    }
+  }
+});
+
+export {
+  createBlogPost,
+  getAllBlogs,
+  deleteBlog,
+  editBlog,
+  getSingleBlog,
+  markBlogAsRead,
+  addComment,
+};
