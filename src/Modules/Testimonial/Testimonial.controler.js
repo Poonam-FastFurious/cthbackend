@@ -22,8 +22,8 @@ const createTestimonial = async (req, res) => {
       throw new ApiError(409, "Testimonial from this email already exists");
     }
 
-    const imageLocalPath = req.files?.photo?.[0]?.path;
-    let photoUrl;
+    const imageLocalPath = req.files?.photoUrl?.[0]?.path;
+
     if (imageLocalPath) {
       const image = await uploadOnCloudinary(imageLocalPath);
       if (!image) {

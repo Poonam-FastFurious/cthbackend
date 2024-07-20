@@ -24,7 +24,7 @@ const AssociateMemberSchema = new Schema(
     image: {
       // New field for storing the image URL
       type: String,
-      required: false, // Set to true if the image is required
+      required: true, // Set to true if the image is required
     },
   },
   { timestamps: true }

@@ -27,6 +27,7 @@ const testimonialSchema = new Schema(
     },
     photoUrl: {
       type: String,
+      required: true,
     },
   },
   { timestamps: true }
