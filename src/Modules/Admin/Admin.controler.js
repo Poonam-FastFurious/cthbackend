@@ -263,14 +263,14 @@ const updateAdmin = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
-const changeAdminPassword = asyncHandler(async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
-
-  if (!req.admin) {
-    throw new ApiError(401, "Unauthorized");
-  }
-
+const changeAdminPassword = async (req, res) => {
   try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!req.admin) {
+      throw new ApiError(401, "Unauthorized");
+    }
+
     const admin = await Admin.findById(req.admin._id);
 
     if (!admin) {
@@ -290,10 +290,20 @@ const changeAdminPassword = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, {}, "Password changed successfully"));
   } catch (error) {
-    console.log("Error in changing admin password", error);
-    throw new ApiError(500, "Error in changing admin password", error.message);
+    console.error("Error in changing admin password:", error);
+
+    // Handle specific errors
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    // Handle other unexpected errors
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
-});
+};
+
 
 export {
   loginAdmin,
