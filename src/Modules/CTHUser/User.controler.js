@@ -101,58 +101,91 @@ const registerUser = asyncHandler(async (req, res) => {
     .status(201)
     .json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
-const loginUser = asyncHandler(async (req, res) => {
-  const { contactNumber, emailAddress, OTP } = req.body;
+const loginUser = async (req, res) => {
+  const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+      const user = await User.findById(userId);
+      const accessToken = user.generateAccessToken();
+      const refreshToken = user.generateRefreshToken();
 
-  if (!contactNumber && !emailAddress) {
-    throw new ApiError(400, "username or email is required");
-  }
+      user.refreshToken = refreshToken;
+      user.loginTime = new Date();
+      await user.save({ validateBeforeSave: false });
 
-  const user = await User.findOne({
-    $or: [{ contactNumber }, { emailAddress }],
-  });
-
-  if (!user) {
-    throw new ApiError(404, "User does not exist");
-  }
-
-  // Log password and user for debugging
-  console.log("OTP:", OTP);
-  console.log("User:", user);
-
-  const isPasswordValid = await user.isOTPCorrect(OTP);
-
-  if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials");
-  }
-
-  const { accessToken, refreshToken } = await generateAccessAndRefereshTokens(
-    user._id
-  );
-
-  const loggedInUser = await User.findById(user._id).select(" -refreshToken");
-
-  const options = {
-    httpOnly: true,
-    secure: true,
+      return { accessToken, refreshToken };
+    } catch (error) {
+      throw new ApiError(
+        500,
+        "Something went wrong while generating refresh and access token"
+      );
+    }
   };
 
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          user: loggedInUser,
-          accessToken,
-          refreshToken,
-        },
-        "User logged In Successfully"
-      )
-    );
-});
+  try {
+    const { contactNumber, emailAddress, OTP } = req.body;
+
+    if (!contactNumber && !emailAddress) {
+      throw new ApiError(400, "Contact number or email is required");
+    }
+
+    // Find the user by contact number or email address
+    const user = await User.findOne({
+      $or: [{ contactNumber }, { emailAddress }],
+    });
+
+    if (!user) {
+      throw new ApiError(404, "User does not exist");
+    }
+
+    // Validate OTP
+    const isPasswordValid = await user.isOTPCorrect(OTP);
+
+    if (!isPasswordValid) {
+      throw new ApiError(401, "Invalid user credentials");
+    }
+
+    // Generate access and refresh tokens
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+
+    // Fetch logged-in user data (excluding refreshToken)
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+    user.loginStatus = true;
+    await user.save({ validateBeforeSave: false });
+
+    // Set options for cookies
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    // Send response with cookies and logged-in user data
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { user: loggedInUser, accessToken, refreshToken },
+          "User logged in successfully"
+        )
+      );
+  } catch (error) {
+    console.error("Error during login:", error);
+
+    // Handle specific errors
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    // Handle other unexpected errors
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-OTP -refreshToken");
 

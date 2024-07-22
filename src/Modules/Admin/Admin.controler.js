@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import connectDB from "../../db/index.js";
 import { Admin } from "./Admin.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
+import sendEmail from '../../utils/Sendemail.js';
 
 const initializeAdmin = asyncHandler(async (req, res) => {
   try {
@@ -263,14 +265,14 @@ const updateAdmin = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
-const changeAdminPassword = asyncHandler(async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
-
-  if (!req.admin) {
-    throw new ApiError(401, "Unauthorized");
-  }
-
+const changeAdminPassword = async (req, res) => {
   try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!req.admin) {
+      throw new ApiError(401, "Unauthorized request: Token expired");
+    }
+
     const admin = await Admin.findById(req.admin._id);
 
     if (!admin) {
@@ -288,12 +290,191 @@ const changeAdminPassword = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .json(new ApiResponse(200, {}, "Password changed successfully"));
+      .json({ success: true, message: "Password changed successfully" });
   } catch (error) {
-    console.log("Error in changing admin password", error);
-    throw new ApiError(500, "Error in changing admin password", error.message);
+    console.error("Error during password change:", error);
+
+    // Handle specific errors
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    // Handle other unexpected errors
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
+
+const verifyPassword = asyncHandler(async (req, res) => {
+  const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+      const admin = await Admin.findById(userId);
+      const accessToken = admin.generateAccessToken();
+      const refreshToken = admin.generateRefreshToken();
+
+      admin.refreshToken = refreshToken;
+      admin.loginTime = new Date();
+      await admin.save({ validateBeforeSave: false });
+
+      return { accessToken, refreshToken };
+    } catch (error) {
+      throw new ApiError(
+        500,
+        "Something went wrong while generating refresh and access token"
+      );
+    }
+  };
+
+  try {
+    const { password } = req.body;
+
+    // Validate input
+    if (!password) {
+      throw new ApiError(400, "Password is required");
+    }
+
+    // Find the admin (assuming there's only one admin)
+    const admin = await Admin.findOne({ isAdmin: true });
+
+    if (!admin) {
+      throw new ApiError(404, "Admin not found");
+    }
+
+    // Validate password
+    const isPasswordValid = await admin.isPasswordCorrect(password);
+
+    if (!isPasswordValid) {
+      throw new ApiError(401, "Invalid password");
+    }
+
+    // Generate access and refresh tokens
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      admin._id
+    );
+
+    // Fetch logged-in admin data (excluding password and refreshToken)
+    const loggedInAdmin = await Admin.findById(admin._id).select(
+      "-password -refreshToken"
+    );
+    admin.loginstatus = true;
+    await admin.save({ validateBeforeSave: false });
+
+    // Set options for cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true, // Ensure cookies are secure in production
+
+    };
+
+    // Send response with cookies and logged-in admin data
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, cookieOptions)
+      .cookie("refreshToken", refreshToken, cookieOptions)
+      .json(
+        new ApiResponse(
+          200,
+          { admin: loggedInAdmin, accessToken, refreshToken },
+          "Password is correct, tokens generated successfully"
+        )
+      );
+  } catch (error) {
+    console.error("Error during password verification:", error);
+
+    // Handle specific errors
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    // Handle other unexpected errors
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      throw new ApiError(400, 'Email is required');
+    }
+
+    const admin = await Admin.findOne({ email });
+
+    if (!admin) {
+      throw new ApiError(404, 'Admin with this email does not exist');
+    }
+
+    const resetToken = admin.generatePasswordResetToken();
+    await admin.save({ validateBeforeSave: false });
+
+    const resetURL = `${req.protocol}://${req.get('host')}/api/v1/admin/resetPassword/${resetToken}`;
+
+    const message = `Forgot your password? Submit a PATCH request with your new password to: ${resetURL}.\nIf you didn't request this, please ignore this email.`;
+
+    await sendEmail({
+      email: admin.email,
+      subject: 'Your password reset token (valid for 10 minutes)',
+      message,
+    });
+
+    res.status(200).json(
+      new ApiResponse(200, 'Token sent to email!', true)
+    );
+  } catch (error) {
+    console.error('Error during forgot password:', error);
+
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const admin = await Admin.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!admin) {
+      throw new ApiError(400, 'Token is invalid or has expired');
+    }
+
+    admin.password = password;
+    admin.passwordResetToken = undefined;
+    admin.passwordResetExpires = undefined;
+    await admin.save();
+
+    res.status(200).json(
+      new ApiResponse(200, 'Password has been reset!', true)
+    );
+  } catch (error) {
+    console.error('Error during password reset:', error);
+
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 
 export {
   loginAdmin,
@@ -301,4 +482,7 @@ export {
   getAdminDetails,
   updateAdmin,
   changeAdminPassword,
+  verifyPassword,
+  forgotPassword,
+  resetPassword
 };
