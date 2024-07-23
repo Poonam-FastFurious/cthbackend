@@ -29,6 +29,8 @@ import faqs from "../src/Modules/FAQS/Faq.routes.js";
 import testimonials from "../src/Modules/Testimonial/Testimonial.routes.js";
 import Gallery from "../src/Modules/Gallery/Gallery.routes.js";
 import associatemember from "../src/Modules/Associatemember/Associate.routes.js";
+import chatRoutes from "../src/Modules/Chats/Chat.routes.js";
+import messageRoutes from "../src/Modules/Mesaage/Message.routes.js";
 
 //routes declearetion
 app.use("/api/v1/admin", adminrouter);
@@ -43,5 +45,7 @@ app.use("/api/v1/faq", faqs);
 app.use("/api/v1/testimonial", testimonials);
 app.use("/api/v1/gallery", Gallery);
 app.use("/api/v1/associate", associatemember);
+app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/message", messageRoutes);
 
 export { app };
