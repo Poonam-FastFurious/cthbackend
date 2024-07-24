@@ -145,10 +145,14 @@ const loginUser = async (req, res) => {
     }
 
     // Generate access and refresh tokens
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
 
     // Fetch logged-in user data (excluding refreshToken)
-    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
 
     user.loginStatus = true;
     await user.save({ validateBeforeSave: false });
@@ -271,5 +275,33 @@ const deleteUser = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, null, "User deleted successfully"));
 });
+const getCurrentUser = asyncHandler(async (req, res) => {
+  // Extract userId from the request (from the query parameter or body)
+  const userId = req.params.userId || req.body.userId || req.query.userId;
 
-export { registerUser, loginUser, getAllUsers, updateUser, deleteUser };
+  // Validate userId
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid User ID");
+  }
+
+  // Fetch user details by userId
+  const user = await User.findById(userId).select("-password -refreshToken"); // Exclude sensitive fields
+
+  // Handle case when user is not found
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User details retrieved successfully"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  getAllUsers,
+  updateUser,
+  deleteUser,
+  getCurrentUser,
+};

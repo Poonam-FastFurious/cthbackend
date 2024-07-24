@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   deleteUser,
   getAllUsers,
+  getCurrentUser,
   loginUser,
   registerUser,
   updateUser,
@@ -23,4 +24,5 @@ router.route("/login").post(loginUser);
 router.route("/alluser").get(getAllUsers);
 router.route("/update").patch(updateUser);
 router.route("/delete").delete(deleteUser);
+router.route("/currentuser").get(getCurrentUser);
 export default router;
