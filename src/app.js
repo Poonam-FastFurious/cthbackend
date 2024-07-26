@@ -1,12 +1,21 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
 const app = express();
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: "http://localhost:5174",
+
+    credentials: true,
+  },
+});
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: "http://localhost:5174",
     credentials: true,
   })
 );
@@ -48,4 +57,20 @@ app.use("/api/v1/associate", associatemember);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/message", messageRoutes);
 
-export { app };
+// Socket.io connection handler
+io.on("connection", (socket) => {
+  const userId = socket.handshake.query.userId;
+  console.log(`A user with ID ${userId} connected`);
+  // Handle incoming messages
+  socket.on("message", (data) => {
+    console.log(`Message received from user ${userId}:`, data);
+    // Broadcast message to all connected clients
+    io.emit("message", { ...data, userId });
+  });
+
+  // Handle disconnection
+  socket.on("disconnect", () => {
+    console.log("A user disconnected");
+  });
+});
+export { app, server };
