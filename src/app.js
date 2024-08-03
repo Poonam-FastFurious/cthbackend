@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "http://localhost:5174",
+    origin: "*",
 
     credentials: true,
   },
@@ -15,7 +15,7 @@ const io = new SocketIOServer(server, {
 
 app.use(
   cors({
-    origin: "http://localhost:5174",
+    origin: "*",
     credentials: true,
   })
 );
