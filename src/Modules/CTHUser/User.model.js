@@ -32,6 +32,39 @@ const userSchema = new mongoose.Schema(
     address: {
       type: String,
     },
+    profilePhoto: {
+      type: String, // URL to the profile photo
+    },
+    profilePhotoVisibility: {
+      type: String,
+      default: "Everyone",
+    },
+    LastSeen: {
+      type: Boolean,
+      default: true,
+      
+    },
+    AccountStatus: {
+      type: String,
+      default:"Private"
+    },
+    ReadReceipt: {
+      type: Boolean,
+      default: true,
+    },
+    Active:{
+      type:Boolean,
+    },
+    Status:{
+      type:String,
+      default: "Everyone"
+    },
+    lastActive:{
+      type:Date,
+    },
+    LoginTime:{
+      type:Date,
+    },
     skills: {
       type: [String], // Array of skills
     },
