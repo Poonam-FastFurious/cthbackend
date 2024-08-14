@@ -64,17 +64,13 @@ const fetchChats = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 });
+
 const createGroupChat = asyncHandler(async (req, res) => {
   if (!req.body.users || !req.body.name) {
-    return res.status(400).send({ message: "Please Fill all the fields" });
+    return res.status(400).send({ message: "Please Fill all the feilds" });
   }
 
-  let users;
-  try {
-    users = JSON.parse(req.body.users);
-  } catch (error) {
-    return res.status(400).send({ message: "Invalid JSON format for users" });
-  }
+  var users = JSON.parse(req.body.users);
 
   if (users.length < 2) {
     return res
@@ -85,17 +81,6 @@ const createGroupChat = asyncHandler(async (req, res) => {
   users.push(req.user);
 
   try {
-    for (const userId of users) {
-      const user = await User.findById(userId);
-      if (!user) {
-        return res.status(400).send({ message: "User not found" });
-      }
-      if (user.status === "private") {
-        return res
-          .status(400)
-          .send({ message: `User ${user.username}'s account is private` });
-      }
-    }
     const groupChat = await Chat.create({
       chatName: req.body.name,
       users: users,
@@ -139,13 +124,9 @@ const renameGroup = asyncHandler(async (req, res) => {
 
 const addToGroup = asyncHandler(async (req, res) => {
   const { chatId, userId } = req.body;
-  const user = await User.findById(userId);
-  if (user.AccountStatus === "Private") {
-    return res
-      .status(400)
-      .send({ message: `User ${user.username} account is private` });
-  }
+
   // check if the requester is admin
+
   const added = await Chat.findByIdAndUpdate(
     chatId,
     {
