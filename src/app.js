@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "http://towlhall.dev-testing-team.tech",
+    origin: "https://towlhall.dev-testing-team.tech",
 
     credentials: true,
   },
@@ -15,7 +15,7 @@ const io = new SocketIOServer(server, {
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "http://towlhall.dev-testing-team.tech",
+    origin: process.env.CORS_ORIGIN,
     credentials: true,
   })
 );
