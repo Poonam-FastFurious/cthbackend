@@ -7,7 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "https://townhall.brandbell.in",
+    origin: "http://localhost:5173",
+
     credentials: true,
   },
 });
@@ -39,6 +40,9 @@ import Gallery from "../src/Modules/Gallery/Gallery.routes.js";
 import associatemember from "../src/Modules/Associatemember/Associate.routes.js";
 import chatRoutes from "../src/Modules/Chats/Chat.routes.js";
 import messageRoutes from "../src/Modules/Mesaage/Message.routes.js";
+import mediaRoutes from "../src/Modules/Media/Media.routes.js";
+import { User } from "./Modules/CTHUser/User.model.js";
+import { asyncHandler } from "./utils/asyncHandler.js";
 
 //routes declearetion
 app.use("/api/v1/admin", adminrouter);
@@ -55,21 +59,41 @@ app.use("/api/v1/gallery", Gallery);
 app.use("/api/v1/associate", associatemember);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/message", messageRoutes);
+app.use("/api/v1/media", mediaRoutes);
 
 // Socket.io connection handler
-io.on("connection", (socket) => {
+io.on("connection", asyncHandler(async (socket) => {
   const userId = socket.handshake.query.userId;
+  const updateData = {
+    Active: true
+  }
+  await User.findByIdAndUpdate(userId, updateData, {
+    new: true,
+    runValidators: true,
+  }).select("-refreshToken");
   console.log(`A user with ID ${userId} connected`);
   // Handle incoming messages
   socket.on("message", (data) => {
     console.log(`Message received from user ${userId}:`, data);
-    // Broadcast message to all connected clients
+    if (data.content && data.image) {
+      // Agar content me image ka data hai to usko handle karein
+      console.log("Image received:", data.image);
+    }
+
     io.emit("message", { ...data, userId });
   });
 
   // Handle disconnection
-  socket.on("disconnect", () => {
+  socket.on("disconnect", asyncHandler(async () => {
+    const updateData = {
+      Active: false,
+      lastActive: Date.now()
+    }
+    await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: false,
+    });
     console.log("A user disconnected");
-  });
-});
+  }));
+}));
 export { app, server };

@@ -4,6 +4,14 @@ import { User } from "./User.model.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
+import fs from "fs";
+import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
+import { v2 as cloudinary } from "cloudinary"
+import { upload } from "../../middlewares/FileUpload.middlwares.js"
+import dotenv from 'dotenv';
+import { Chat } from "../Chats/Chat.model.js";
+
+dotenv.config();
 const generateAccessAndRefereshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
@@ -25,7 +33,6 @@ const generateAccessAndRefereshTokens = async (userId) => {
     );
   }
 };
-
 const registerUser = asyncHandler(async (req, res) => {
   const {
     firstName,
@@ -36,6 +43,7 @@ const registerUser = asyncHandler(async (req, res) => {
     address,
     skills,
     academicProjects,
+    AccountStatus,
     honoursAndCertifications,
   } = req.body;
 
@@ -46,22 +54,17 @@ const registerUser = asyncHandler(async (req, res) => {
       lastName,
       contactNumber,
       emailAddress,
-      linkedinProfile,
-      address,
-      skills,
-      ,
-      honoursAndCertifications,
     ].some((field) => field?.trim() === "")
   ) {
     throw new ApiError(
       400,
-      "First Name, Last Name, Contact Number, Email Address, and all field are required"
+      "First Name, Last Name, Contact Number, Email Address, are required"
     );
   }
 
   // Check if user already exists (by username or email)
   const existedUser = await User.findOne({
-    $or: [{ username: `CTHUSER${firstName}` }, { emailAddress }],
+    $or: [{ username: `cth${firstName}` }, { emailAddress }],
   });
 
   if (existedUser) {
@@ -75,7 +78,6 @@ const registerUser = asyncHandler(async (req, res) => {
   const username = `CTHUSER${firstName}`;
 
   // Create user object
-  //   const hashedOTP = await bcrypt.hash(OTP, 10);
   const user = await User.create({
     firstName,
     lastName,
@@ -85,16 +87,35 @@ const registerUser = asyncHandler(async (req, res) => {
     linkedinProfile,
     address,
     skills,
+    AccountStatus,
     academicProjects,
     honoursAndCertifications,
     OTP: "123456",
   });
 
   // Fetch created user without password and refreshToken fields
-  const createdUser = await User.findById(user._id).select(" -refreshToken");
+  const createdUser = await User.findById(user._id).select("-refreshToken");
 
   if (!createdUser) {
     throw new ApiError(500, "Something went wrong while registering the user");
+  }
+
+  // Add the newly created user to the CTHMain group
+  try {
+    const cthMainGroup = await Chat.findOne({ chatName: "HALL 1 (General)", isGroupChat: true });
+    if (cthMainGroup) {
+      // Add new user to the group
+      if (!cthMainGroup.users.includes(user._id)) {
+        cthMainGroup.users.push(user._id);
+        await cthMainGroup.save();
+        console.log(`User ${createdUser.username} added to HALL 1 (General) group.`);
+      }
+    } else {
+      // Handle case where CTHMain group does not exist
+      console.error("HALL 1 (General) group does not exist.");
+    }
+  } catch (error) {
+    console.error("Error adding user to CTHMain group:", error.message);
   }
 
   return res
@@ -109,7 +130,7 @@ const loginUser = async (req, res) => {
       const refreshToken = user.generateRefreshToken();
 
       user.refreshToken = refreshToken;
-      user.loginTime = new Date();
+      user.LoginTime = new Date();
       await user.save({ validateBeforeSave: false });
 
       return { accessToken, refreshToken };
@@ -153,8 +174,8 @@ const loginUser = async (req, res) => {
     const loggedInUser = await User.findById(user._id).select(
       "-password -refreshToken"
     );
-
-    user.loginStatus = true;
+    user.loginTime = Date.now();
+    user.Active = true
     await user.save({ validateBeforeSave: false });
 
     // Set options for cookies
@@ -189,7 +210,48 @@ const loginUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+const logoutUser = async (req, res) => {
+  try {
+    // Assuming you have the user ID available in the request body or query parameters
+    const userId = req.body || req.query; // Modify this according to how the user ID is sent in your request
 
+    if (!userId) {
+      throw new ApiError(400, "user ID is required");
+    }
+
+    // Find the admin by ID
+    const user = await User.findById(userId);
+
+    if (!userId) {
+      throw new ApiError(404, "user not found");
+    }
+
+    // Set login status to false
+    user.lastActive = Date.now();
+    user.Active = false;
+    await user.save({ validateBeforeSave: false });
+
+    // Clear cookies (optional)
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    return res
+      .status(200)
+      .json({ success: true, message: "user logged out successfully" });
+  } catch (error) {
+    console.error("Error during logout:", error);
+
+    // Handle specific errors
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    // Handle other unexpected errors
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 const getAllUsers = asyncHandler(async (req, res) => {
   const users = await User.find({}).select("-OTP -refreshToken");
 
@@ -213,6 +275,7 @@ const updateUser = asyncHandler(async (req, res) => {
     linkedinProfile,
     address,
     skills,
+    AccountStatus,
     academicProjects,
     honoursAndCertifications,
   } = req.body;
@@ -241,6 +304,8 @@ const updateUser = asyncHandler(async (req, res) => {
     academicProjects: academicProjects || user.academicProjects,
     honoursAndCertifications:
       honoursAndCertifications || user.honoursAndCertifications,
+    AccountStatus: AccountStatus || user.AccountStatus,
+
   };
 
   // Update the user
@@ -297,6 +362,144 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "User details retrieved successfully"));
 });
 
+const uploadProfilePhoto = asyncHandler(async (req, res) => {
+  const userId = req.params.userId || req.body.userId || req.query.userId;
+
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  if (!req.files || !req.files.profilePhoto) {
+    throw new ApiError(400, "Profile photo is required");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  const imageLocalPath = req.files?.profilePhoto[0]?.path;
+
+  if (!imageLocalPath) {
+    throw new ApiError(400, "Image files are required");
+  }
+
+  const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+
+  if (!uploadedImage) {
+    throw new ApiError(400, "Failed to upload image");
+  }
+
+  // Delete old profile photo if it exists
+  if (user.profilePhoto) {
+    const oldPublicId = user.profilePhoto.split('/').pop().split('.')[0];
+
+    try {
+      await cloudinary.uploader.destroy(oldPublicId);
+      console.log('Old profile photo deleted successfully from Cloudinary');
+    } catch (error) {
+      console.error('Error deleting old profile photo from Cloudinary:', error);
+    }
+  }
+  // Save the new profile photo
+
+  // Update the user's profile photo path in the database
+  const updatedData = { profilePhoto: uploadedImage.url };
+  const updatedUser = await User.findByIdAndUpdate(userId, updatedData, {
+    new: true,
+    runValidators: true,
+  }).select("-refreshToken");
+
+  return res.status(200).json(
+    new ApiResponse(200, { profilePhoto: updatedUser.profilePhoto }, "Profile photo uploaded successfully")
+  );
+});
+const removeProfilePhoto = asyncHandler(async (req, res) => {
+  const userId = req.params.userId || req.body.userId || req.query.userId;
+
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  if (!req.files || !req.files.profilePhoto) {
+    throw new ApiError(400, "Profile photo not found");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  const imageLocalPath = req.files?.profilePhoto[0]?.path;
+
+  if (!imageLocalPath) {
+    throw new ApiError(400, "Image files are required");
+  }
+
+  // Delete old profile photo if it exists
+  if (user.profilePhoto && user.profilePhoto != "") {
+    const oldPublicId = user.profilePhoto.split('/').pop().split('.')[0];
+    try {
+      await cloudinary.uploader.destroy(oldPublicId);
+      console.log('Old profile photo deleted successfully from Cloudinary');
+    } catch (error) {
+      console.error('Error deleting old profile photo from Cloudinary:', error);
+    }
+  }
+  const updatedData = { profilePhoto: "" };
+  await User.findByIdAndUpdate(userId, updatedData, {
+    new: true,
+    runValidators: true,
+  }).select("-refreshToken");
+  return res.status(200).json(
+    new ApiResponse(200, "Profile photo Deleted successfully")
+  );
+});
+const getStatus = asyncHandler(async (req, res) => {
+  const userId = req.params.userId || req.body.userId || req.query.userId;
+  const user = await User.findById(userId);
+  if (user.Active) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { Status: 'Online' }, ""));
+  }
+  else {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { Status: 'Offline', lastActive: user.lastActive }, ""));
+  }
+});
+const updateUserPrivacy = asyncHandler(async (req, res) => {
+  const userId = req.params.userId || req.body.userId || req.query.userId;
+  const { LastSeen, ReadReceipt, Status, profilePhotoVisibility } = req.body;
+
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+  const updateData = {
+    LastSeen: LastSeen ?? user.LastSeen,
+    ReadReceipt: ReadReceipt ?? user.ReadReceipt,
+    Status: Status ?? user.Status,
+    profilePhotoVisibility: profilePhotoVisibility ?? user.profilePhotoVisibility
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
+    new: true,
+    runValidators: true,
+  }).select("-refreshToken");
+
+  if (!updatedUser) {
+    throw new ApiError(500, "Something went wrong while updating the user");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "User privacy settings updated successfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -304,4 +507,10 @@ export {
   updateUser,
   deleteUser,
   getCurrentUser,
+  uploadProfilePhoto,
+  getStatus,
+  logoutUser,
+  updateUserPrivacy,
+  upload,
+  removeProfilePhoto
 };

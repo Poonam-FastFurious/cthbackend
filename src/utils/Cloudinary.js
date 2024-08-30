@@ -9,7 +9,7 @@ cloudinary.config({
 
 
 
-const uploadOnCloudinary = async (localFilePath) => {
+const uploadOnCloudinary = async (localFilePath,userId) => {
   try {
     if (!localFilePath) {
       throw new Error("Local file path is missing");
