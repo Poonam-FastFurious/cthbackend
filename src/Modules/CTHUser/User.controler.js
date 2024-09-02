@@ -6,9 +6,9 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import fs from "fs";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
-import { v2 as cloudinary } from "cloudinary"
-import { upload } from "../../middlewares/FileUpload.middlwares.js"
-import dotenv from 'dotenv';
+import { v2 as cloudinary } from "cloudinary";
+import { upload } from "../../middlewares/FileUpload.middlwares.js";
+import dotenv from "dotenv";
 import { Chat } from "../Chats/Chat.model.js";
 
 dotenv.config();
@@ -42,19 +42,16 @@ const registerUser = asyncHandler(async (req, res) => {
     linkedinProfile,
     address,
     skills,
-    academicProjects,
+    gender,
     AccountStatus,
     honoursAndCertifications,
   } = req.body;
 
   // Validate required fields
   if (
-    [
-      firstName,
-      lastName,
-      contactNumber,
-      emailAddress,
-    ].some((field) => field?.trim() === "")
+    [firstName, lastName, contactNumber, emailAddress].some(
+      (field) => field?.trim() === ""
+    )
   ) {
     throw new ApiError(
       400,
@@ -88,7 +85,7 @@ const registerUser = asyncHandler(async (req, res) => {
     address,
     skills,
     AccountStatus,
-    academicProjects,
+    gender,
     honoursAndCertifications,
     OTP: "123456",
   });
@@ -101,23 +98,6 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   // Add the newly created user to the CTHMain group
-  try {
-    const cthMainGroup = await Chat.findOne({ chatName: "HALL 1 (General)", isGroupChat: true });
-    if (cthMainGroup) {
-      // Add new user to the group
-      if (!cthMainGroup.users.includes(user._id)) {
-        cthMainGroup.users.push(user._id);
-        await cthMainGroup.save();
-        console.log(`User ${createdUser.username} added to HALL 1 (General) group.`);
-      }
-    } else {
-      // Handle case where CTHMain group does not exist
-      console.error("HALL 1 (General) group does not exist.");
-    }
-  } catch (error) {
-    console.error("Error adding user to CTHMain group:", error.message);
-  }
-
   return res
     .status(201)
     .json(new ApiResponse(201, createdUser, "User registered successfully"));
@@ -174,8 +154,8 @@ const loginUser = async (req, res) => {
     const loggedInUser = await User.findById(user._id).select(
       "-password -refreshToken"
     );
-    user.loginTime = Date.now();
-    user.Active = true
+    user.LoginTime = Date.now();
+    user.Active = true;
     await user.save({ validateBeforeSave: false });
 
     // Set options for cookies
@@ -305,7 +285,6 @@ const updateUser = asyncHandler(async (req, res) => {
     honoursAndCertifications:
       honoursAndCertifications || user.honoursAndCertifications,
     AccountStatus: AccountStatus || user.AccountStatus,
-
   };
 
   // Update the user
@@ -391,13 +370,13 @@ const uploadProfilePhoto = asyncHandler(async (req, res) => {
 
   // Delete old profile photo if it exists
   if (user.profilePhoto) {
-    const oldPublicId = user.profilePhoto.split('/').pop().split('.')[0];
+    const oldPublicId = user.profilePhoto.split("/").pop().split(".")[0];
 
     try {
       await cloudinary.uploader.destroy(oldPublicId);
-      console.log('Old profile photo deleted successfully from Cloudinary');
+      console.log("Old profile photo deleted successfully from Cloudinary");
     } catch (error) {
-      console.error('Error deleting old profile photo from Cloudinary:', error);
+      console.error("Error deleting old profile photo from Cloudinary:", error);
     }
   }
   // Save the new profile photo
@@ -409,9 +388,15 @@ const uploadProfilePhoto = asyncHandler(async (req, res) => {
     runValidators: true,
   }).select("-refreshToken");
 
-  return res.status(200).json(
-    new ApiResponse(200, { profilePhoto: updatedUser.profilePhoto }, "Profile photo uploaded successfully")
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { profilePhoto: updatedUser.profilePhoto },
+        "Profile photo uploaded successfully"
+      )
+    );
 });
 const removeProfilePhoto = asyncHandler(async (req, res) => {
   const userId = req.params.userId || req.body.userId || req.query.userId;
@@ -436,12 +421,12 @@ const removeProfilePhoto = asyncHandler(async (req, res) => {
 
   // Delete old profile photo if it exists
   if (user.profilePhoto && user.profilePhoto != "") {
-    const oldPublicId = user.profilePhoto.split('/').pop().split('.')[0];
+    const oldPublicId = user.profilePhoto.split("/").pop().split(".")[0];
     try {
       await cloudinary.uploader.destroy(oldPublicId);
-      console.log('Old profile photo deleted successfully from Cloudinary');
+      console.log("Old profile photo deleted successfully from Cloudinary");
     } catch (error) {
-      console.error('Error deleting old profile photo from Cloudinary:', error);
+      console.error("Error deleting old profile photo from Cloudinary:", error);
     }
   }
   const updatedData = { profilePhoto: "" };
@@ -449,22 +434,25 @@ const removeProfilePhoto = asyncHandler(async (req, res) => {
     new: true,
     runValidators: true,
   }).select("-refreshToken");
-  return res.status(200).json(
-    new ApiResponse(200, "Profile photo Deleted successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, "Profile photo Deleted successfully"));
 });
 const getStatus = asyncHandler(async (req, res) => {
   const userId = req.params.userId || req.body.userId || req.query.userId;
   const user = await User.findById(userId);
   if (user.Active) {
+    return res.status(200).json(new ApiResponse(200, { Status: "Online" }, ""));
+  } else {
     return res
       .status(200)
-      .json(new ApiResponse(200, { Status: 'Online' }, ""));
-  }
-  else {
-    return res
-      .status(200)
-      .json(new ApiResponse(200, { Status: 'Offline', lastActive: user.lastActive }, ""));
+      .json(
+        new ApiResponse(
+          200,
+          { Status: "Offline", lastActive: user.lastActive },
+          ""
+        )
+      );
   }
 });
 const updateUserPrivacy = asyncHandler(async (req, res) => {
@@ -483,8 +471,9 @@ const updateUserPrivacy = asyncHandler(async (req, res) => {
     LastSeen: LastSeen ?? user.LastSeen,
     ReadReceipt: ReadReceipt ?? user.ReadReceipt,
     Status: Status ?? user.Status,
-    profilePhotoVisibility: profilePhotoVisibility ?? user.profilePhotoVisibility
-  }
+    profilePhotoVisibility:
+      profilePhotoVisibility ?? user.profilePhotoVisibility,
+  };
 
   const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
     new: true,
@@ -512,5 +501,5 @@ export {
   logoutUser,
   updateUserPrivacy,
   upload,
-  removeProfilePhoto
+  removeProfilePhoto,
 };

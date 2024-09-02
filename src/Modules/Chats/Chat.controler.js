@@ -46,19 +46,24 @@ const accessChat = asyncHandler(async (req, res) => {
 });
 const createCTHMainGroup = async () => {
   try {
-    const groupExists = await Chat.findOne({ chatName: "HALL 1 (General)", isGroupChat: true });
+    const groupExists = await Chat.findOne({
+      chatName: "HALL 1 (General)",
+      isGroupChat: true,
+    });
     if (!groupExists) {
       const users = await User.find();
       if (users.length === 0) return;
 
       const groupChat = await Chat.create({
         chatName: "HALL 1 (General)",
-        users: users.map(user => user._id),
+        users: users.map((user) => user._id),
         isGroupChat: true,
         groupAdmin: users[0]._id, // Setting the first user as the group admin
       });
 
-      console.log("HALL 1 (General) group created successfully with all users.");
+      console.log(
+        "HALL 1 (General) group created successfully with all users."
+      );
     }
   } catch (error) {
     console.error("Error creating CTHMain group:", error.message);
@@ -88,7 +93,10 @@ const fetchSingleChat = asyncHandler(async (req, res) => {
   const { chatId } = req.query;
 
   try {
-    const chat = await Chat.findOne({ _id: chatId, users: { $elemMatch: { $eq: req.user } } })
+    const chat = await Chat.findOne({
+      _id: chatId,
+      users: { $elemMatch: { $eq: req.user } },
+    })
       .populate("users", "-password")
       .populate("groupAdmin", "-password")
       .populate("latestMessage");
@@ -131,8 +139,10 @@ const createGroupChat = asyncHandler(async (req, res) => {
       if (!user) {
         return res.status(400).send({ message: "User not found" });
       }
-      if (user.status === 'private') {
-        return res.status(400).send({ message: `User ${user.username}'s account is private` });
+      if (user.status === "private") {
+        return res
+          .status(400)
+          .send({ message: `User ${user.username}'s account is private` });
       }
     }
     const groupChat = await Chat.create({
@@ -178,9 +188,19 @@ const renameGroup = asyncHandler(async (req, res) => {
 
 const addToGroup = asyncHandler(async (req, res) => {
   const { chatId, userId } = req.body;
+  if (!chatId || !userId) {
+    return res
+      .status(400)
+      .send({ message: "Chat ID and User ID are required" });
+  }
   const user = await User.findById(userId);
-  if (user.AccountStatus === 'Private') {
-    return res.status(400).send({ message: `User ${user.username} account is private` });
+  if (!user) {
+    return res.status(404).send({ message: "User not found" });
+  }
+  if (user.AccountStatus === "Private") {
+    return res
+      .status(400)
+      .send({ message: `User ${user.username} account is private` });
   }
   // check if the requester is admin
   const added = await Chat.findByIdAndUpdate(

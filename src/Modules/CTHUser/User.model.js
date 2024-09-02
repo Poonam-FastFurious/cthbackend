@@ -42,34 +42,33 @@ const userSchema = new mongoose.Schema(
     LastSeen: {
       type: Boolean,
       default: true,
-      
     },
     AccountStatus: {
       type: String,
-      default:"Private"
+      default: "Private",
     },
     ReadReceipt: {
       type: Boolean,
       default: true,
     },
-    Active:{
-      type:Boolean,
+    Active: {
+      type: Boolean,
     },
-    Status:{
-      type:String,
-      default: "Everyone"
+    Status: {
+      type: String,
+      default: "Everyone",
     },
-    lastActive:{
-      type:Date,
+    lastActive: {
+      type: Date,
     },
-    LoginTime:{
-      type:Date,
+    LoginTime: {
+      type: Date,
     },
     skills: {
       type: [String], // Array of skills
     },
-    academicProjects: {
-      type: [String], // Array of academic project titles
+    gender: {
+      type: String,
     },
     honoursAndCertifications: {
       type: [String], // Array of honours and certifications
