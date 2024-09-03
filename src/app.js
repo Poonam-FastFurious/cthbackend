@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "https://towlhall.dev-testing-team.tech",
 
     credentials: true,
   },
@@ -62,38 +62,44 @@ app.use("/api/v1/message", messageRoutes);
 app.use("/api/v1/media", mediaRoutes);
 
 // Socket.io connection handler
-io.on("connection", asyncHandler(async (socket) => {
-  const userId = socket.handshake.query.userId;
-  const updateData = {
-    Active: true
-  }
-  await User.findByIdAndUpdate(userId, updateData, {
-    new: true,
-    runValidators: true,
-  }).select("-refreshToken");
-  console.log(`A user with ID ${userId} connected`);
-  // Handle incoming messages
-  socket.on("message", (data) => {
-    console.log(`Message received from user ${userId}:`, data);
-    if (data.content && data.image) {
-      // Agar content me image ka data hai to usko handle karein
-      console.log("Image received:", data.image);
-    }
-
-    io.emit("message", { ...data, userId });
-  });
-
-  // Handle disconnection
-  socket.on("disconnect", asyncHandler(async () => {
+io.on(
+  "connection",
+  asyncHandler(async (socket) => {
+    const userId = socket.handshake.query.userId;
     const updateData = {
-      Active: false,
-      lastActive: Date.now()
-    }
+      Active: true,
+    };
     await User.findByIdAndUpdate(userId, updateData, {
       new: true,
-      runValidators: false,
+      runValidators: true,
+    }).select("-refreshToken");
+    console.log(`A user with ID ${userId} connected`);
+    // Handle incoming messages
+    socket.on("message", (data) => {
+      console.log(`Message received from user ${userId}:`, data);
+      if (data.content && data.image) {
+        // Agar content me image ka data hai to usko handle karein
+        console.log("Image received:", data.image);
+      }
+
+      io.emit("message", { ...data, userId });
     });
-    console.log("A user disconnected");
-  }));
-}));
+
+    // Handle disconnection
+    socket.on(
+      "disconnect",
+      asyncHandler(async () => {
+        const updateData = {
+          Active: false,
+          lastActive: Date.now(),
+        };
+        await User.findByIdAndUpdate(userId, updateData, {
+          new: true,
+          runValidators: false,
+        });
+        console.log("A user disconnected");
+      })
+    );
+  })
+);
 export { app, server };
