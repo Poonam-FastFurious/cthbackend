@@ -45,7 +45,6 @@ const registerUser = asyncHandler(async (req, res) => {
     gender,
     AccountStatus,
     honoursAndCertifications,
-    IsApproved,
   } = req.body;
 
   // Validate required fields
@@ -124,9 +123,17 @@ const loginUser = async (req, res) => {
       );
     }
   };
-
+  const { contactNumber, emailAddress, OTP } = req.body;
+  const user = await User.findOne({
+    $or: [{ contactNumber }, { emailAddress }],
+  });
   try {
-    const { contactNumber, emailAddress, OTP } = req.body;
+    if (!user.IsApproved) {
+      throw new ApiError(
+        400,
+        "User Does not have permission please contact Admin"
+      );
+    }
 
     if (!contactNumber && !emailAddress) {
       throw new ApiError(400, "Contact number or email is required");
@@ -488,6 +495,62 @@ const updateUserPrivacy = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, "User privacy settings updated successfully"));
 });
+const approveUser = asyncHandler(async (req, res) => {
+  const userId = req.params.userId || req.body.userId || req.query.userId;
+
+  // Validate userId
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  // Find the user
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Set IsApproved to true
+  user.IsApproved = true;
+  await user.save({ validateBeforeSave: false });
+
+  // Automatically add the user to the group
+  const groupChat = await Chat.findOne({
+    chatName: "HALL 1 (General)",
+    isGroupChat: true,
+  });
+
+  if (groupChat) {
+    const added = await Chat.findByIdAndUpdate(
+      groupChat._id,
+      {
+        $addToSet: { users: user._id }, // $addToSet ensures the user is added only if not already in the group
+      },
+      {
+        new: true,
+      }
+    )
+      .populate("users", "-password")
+      .populate("groupAdmin", "-password");
+
+    if (!added) {
+      throw new ApiError(404, "Failed to add user to group");
+    }
+
+    console.log(`User ${user.username} added to HALL 1 (General) group.`);
+  } else {
+    throw new ApiError(404, "Group chat not found");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { isApproved: user.IsApproved },
+        "User approval status updated and added to group successfully"
+      )
+    );
+});
 
 export {
   registerUser,
@@ -502,4 +565,5 @@ export {
   updateUserPrivacy,
   upload,
   removeProfilePhoto,
+  approveUser,
 };
