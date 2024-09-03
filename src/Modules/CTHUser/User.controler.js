@@ -87,6 +87,7 @@ const registerUser = asyncHandler(async (req, res) => {
     AccountStatus,
     gender,
     honoursAndCertifications,
+    IsApproved,
     OTP: "123456",
   });
 
@@ -111,6 +112,7 @@ const loginUser = async (req, res) => {
 
       user.refreshToken = refreshToken;
       user.LoginTime = new Date();
+
       await user.save({ validateBeforeSave: false });
 
       return { accessToken, refreshToken };
@@ -123,6 +125,10 @@ const loginUser = async (req, res) => {
   };
 
   try {
+    if(!user.IsApproved){
+      throw new ApiError(400, "User Does not have permission please contact Admin");
+
+    }
     const { contactNumber, emailAddress, OTP } = req.body;
 
     if (!contactNumber && !emailAddress) {
@@ -488,7 +494,28 @@ const updateUserPrivacy = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, "User privacy settings updated successfully"));
 });
+const approveUser = asyncHandler(async (req, res) => {
+  const userId = req.params.userId || req.body.userId || req.query.userId;
 
+  // Validate userId
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid user ID");
+  }
+
+  // Find the user
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // Set IsApproved to true
+  user.IsApproved = true;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { isApproved: user.IsApproved }, "User approval status updated successfully"));
+});
 export {
   registerUser,
   loginUser,
@@ -502,4 +529,5 @@ export {
   updateUserPrivacy,
   upload,
   removeProfilePhoto,
+  approveUser
 };

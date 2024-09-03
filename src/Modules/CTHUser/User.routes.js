@@ -10,7 +10,8 @@ import {
   uploadProfilePhoto,
   getStatus,
   updateUserPrivacy,
-  removeProfilePhoto
+  removeProfilePhoto,
+  approveUser
 } from "./User.controler.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
 
@@ -47,4 +48,5 @@ router.route("/profilephoto").post(
     }
   ]), uploadProfilePhoto);
 router.route("/privacy").patch(updateUserPrivacy);
+router.route("/approveuser").post(approveUser);
 export default router;
