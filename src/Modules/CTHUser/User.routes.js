@@ -10,7 +10,8 @@ import {
   uploadProfilePhoto,
   getStatus,
   updateUserPrivacy,
-  removeProfilePhoto
+  removeProfilePhoto,
+  approveUser,
 } from "./User.controler.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
 
@@ -20,8 +21,8 @@ router.route("/register").post(
   upload.fields([
     {
       name: "profilePhoto",
-      maxCount: 1
-    }
+      maxCount: 1,
+    },
   ]),
   registerUser
 );
@@ -36,15 +37,20 @@ router.route("/removeprofilephoto").post(
   upload.fields([
     {
       name: "profilePhoto",
-      maxCount: 1
-    }
-  ]), removeProfilePhoto);
+      maxCount: 1,
+    },
+  ]),
+  removeProfilePhoto
+);
 router.route("/profilephoto").post(
   upload.fields([
     {
       name: "profilePhoto",
-      maxCount: 1
-    }
-  ]), uploadProfilePhoto);
+      maxCount: 1,
+    },
+  ]),
+  uploadProfilePhoto
+);
 router.route("/privacy").patch(updateUserPrivacy);
+router.route("/approveuser").patch(approveUser);
 export default router;

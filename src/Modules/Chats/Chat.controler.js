@@ -58,7 +58,7 @@ const createCTHMainGroup = async () => {
         chatName: "HALL 1 (General)",
         users: users.map((user) => user._id),
         isGroupChat: true,
-        groupAdmin: users[0]._id, // Setting the first user as the group admin
+        groupAdmin: "66d6edd2f3ee77ff9d35afe2", // Setting the first user as the group admin
       });
 
       console.log(
@@ -69,7 +69,7 @@ const createCTHMainGroup = async () => {
     console.error("Error creating CTHMain group:", error.message);
   }
 };
-createCTHMainGroup();
+
 const fetchChats = asyncHandler(async (req, res) => {
   try {
     Chat.find({ users: { $elemMatch: { $eq: req.user } } })
