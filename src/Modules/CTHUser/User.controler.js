@@ -45,6 +45,7 @@ const registerUser = asyncHandler(async (req, res) => {
     gender,
     AccountStatus,
     honoursAndCertifications,
+    IsApproved,
   } = req.body;
 
   // Validate required fields
