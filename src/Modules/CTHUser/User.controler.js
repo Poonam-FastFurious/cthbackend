@@ -34,76 +34,85 @@ const generateAccessAndRefereshTokens = async (userId) => {
   }
 };
 const registerUser = asyncHandler(async (req, res) => {
-  const {
-    firstName,
-    lastName,
-    contactNumber,
-    emailAddress,
-    linkedinProfile,
-    address,
-    skills,
-    gender,
-    AccountStatus,
-    honoursAndCertifications,
-    IsApproved,
-  } = req.body;
+  try {
+    const {
+      firstName,
+      lastName,
+      contactNumber,
+      emailAddress,
+      linkedinProfile,
+      address,
+      skills,
+      gender,
+      AccountStatus,
+      honoursAndCertifications,
+      IsApproved,
+    } = req.body;
 
-  // Validate required fields
-  if (
-    [firstName, lastName, contactNumber, emailAddress].some(
-      (field) => field?.trim() === ""
-    )
-  ) {
-    throw new ApiError(
-      400,
-      "First Name, Last Name, Contact Number, Email Address, are required"
-    );
+    // Validate required fields
+    if (
+      [firstName, lastName, contactNumber, emailAddress].some(
+        (field) => field?.trim() === ""
+      )
+    ) {
+      throw new ApiError(
+        400,
+        "First Name, Last Name, Contact Number, and Email Address are required"
+      );
+    }
+
+    // Check if user already exists (by username or email)
+    const existedUser = await User.findOne({
+      $or: [{ username: `CTHUSER${firstName}` }, { emailAddress }],
+    });
+
+    if (existedUser) {
+      throw new ApiError(
+        409,
+        "User with the same username or email already exists"
+      );
+    }
+
+    // Create username
+    const username = `CTHUSER${firstName}`;
+
+    // Create user object
+    const user = await User.create({
+      firstName,
+      lastName,
+      username,
+      contactNumber,
+      emailAddress,
+      linkedinProfile,
+      address,
+      skills,
+      AccountStatus,
+      gender,
+      honoursAndCertifications,
+      IsApproved,
+      OTP: "123456",
+    });
+
+    // Fetch created user without password and refreshToken fields
+    const createdUser = await User.findById(user._id).select("-refreshToken");
+
+    if (!createdUser) {
+      throw new ApiError(
+        500,
+        "Something went wrong while registering the user"
+      );
+    }
+
+    // Return success response
+    return res
+      .status(201)
+      .json(new ApiResponse(201, createdUser, "User registered successfully"));
+  } catch (err) {
+    // Handle the error and send response to frontend
+    ApiError.handleError(err, res);
   }
-
-  // Check if user already exists (by username or email)
-  const existedUser = await User.findOne({
-    $or: [{ username: `cth${firstName}` }, { emailAddress }],
-  });
-
-  if (existedUser) {
-    throw new ApiError(
-      409,
-      "User with the same username or email already exists"
-    );
-  }
-
-  // Create username
-  const username = `CTHUSER${firstName}`;
-
-  // Create user object
-  const user = await User.create({
-    firstName,
-    lastName,
-    username,
-    contactNumber,
-    emailAddress,
-    linkedinProfile,
-    address,
-    skills,
-    AccountStatus,
-    gender,
-    honoursAndCertifications,
-    IsApproved,
-    OTP: "123456",
-  });
-
-  // Fetch created user without password and refreshToken fields
-  const createdUser = await User.findById(user._id).select("-refreshToken");
-
-  if (!createdUser) {
-    throw new ApiError(500, "Something went wrong while registering the user");
-  }
-
-  // Add the newly created user to the CTHMain group
-  return res
-    .status(201)
-    .json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
+
 const loginUser = async (req, res) => {
   const generateAccessAndRefreshTokens = async (userId) => {
     try {

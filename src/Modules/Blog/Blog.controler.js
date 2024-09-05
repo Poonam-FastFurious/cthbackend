@@ -313,7 +313,6 @@ const addComment = asyncHandler(async (req, res) => {
 
     // Add the comment
     blogPost.comments.push({
-      user: req.user._id,
       comment,
       replies: [],
     });

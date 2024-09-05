@@ -80,5 +80,44 @@ const getAllFAQs = asyncHandler(async (req, res) => {
     }
   }
 });
+const deleteFAQ = asyncHandler(async (req, res) => {
+  try {
+    // Get FAQ ID from request parameters
+    const { id } = req.body;
 
-export { addFAQ, getAllFAQs };
+    // Validate the ID
+    if (!id) {
+      throw new ApiError(400, "FAQ ID is required");
+    }
+
+    // Find and delete the FAQ by ID
+    const deletedFAQ = await FAQ.findByIdAndDelete(id);
+
+    // Check if the FAQ was found and deleted
+    if (!deletedFAQ) {
+      throw new ApiError(404, "FAQ not found");
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: deletedFAQ,
+      message: "FAQ deleted successfully",
+    });
+  } catch (error) {
+    // Handle errors using ApiError's handleError method
+    if (error instanceof ApiError) {
+      return ApiError.handleError(error, res);
+    } else {
+      // For unexpected errors, use a generic internal server error response
+      const apiError = new ApiError(
+        500,
+        "Internal server error",
+        [],
+        error.stack
+      );
+      return ApiError.handleError(apiError, res);
+    }
+  }
+});
+
+export { addFAQ, getAllFAQs, deleteFAQ };

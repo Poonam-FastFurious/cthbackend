@@ -27,7 +27,7 @@ router.get("/allblogs", getAllBlogs);
 router.get("/singleblogs", getSingleBlog);
 router.route("/delete").delete(deleteBlog);
 router.route("/read").patch(markBlogAsRead);
-router.route("/coments").patch(verifyJWT, addComment);
+router.route("/coments").patch(addComment);
 router.patch(
   "/edit",
   upload.fields([

@@ -6,10 +6,12 @@ const userSchema = new mongoose.Schema(
     firstName: {
       type: String,
       required: true,
+      unique: true,
     },
     lastName: {
       type: String,
       required: true,
+      unique: true,
     },
     username: {
       type: String,
@@ -19,6 +21,7 @@ const userSchema = new mongoose.Schema(
     contactNumber: {
       type: String,
       required: true,
+      unique: true,
     },
     emailAddress: {
       type: String,
