@@ -64,18 +64,25 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Check if user already exists (by username or email)
     const existedUser = await User.findOne({
-      $or: [{ username: `CTHUSER${firstName}` }, { emailAddress }],
+      $or: [{ contactNumber }, { emailAddress }],
     });
 
     if (existedUser) {
       throw new ApiError(
         409,
-        "User with the same username or email already exists"
+        "User with the same contact number or email already exists"
       );
     }
 
     // Create username
-    const username = `CTHUSER${firstName}`;
+    let username = `CTHUSER${firstName}`;
+    let userExists = await User.findOne({ username });
+
+    // If username exists, append a unique identifier (e.g., timestamp or random number)
+    while (userExists) {
+      username = `CTHUSER${firstName}${Math.floor(Math.random() * 10000)}`;
+      userExists = await User.findOne({ username });
+    }
 
     // Create user object
     const user = await User.create({
