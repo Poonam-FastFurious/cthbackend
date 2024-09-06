@@ -10,7 +10,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
 import dotenv from "dotenv";
 import { Chat } from "../Chats/Chat.model.js";
-import sendEmail from '../../utils/Sendemail.js';
+import sendEmail from "../../utils/Sendemail.js";
 
 dotenv.config();
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -525,8 +525,9 @@ const approveUser = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
   await sendEmail({
     email: user.emailAddress,
-    subject: 'User Approval',
-    message:'Your account have been approved by admin you can sign in now',
+    subject: "User Approval",
+    message:
+      "Your account have been approved by admin you can sign in now using mobile or email",
   });
   // Automatically add the user to the group
   const groupChat = await Chat.findOne({

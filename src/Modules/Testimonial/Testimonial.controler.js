@@ -4,7 +4,6 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
 import { Testimonial } from "./Testimonial.modal.js";
-
 const createTestimonial = async (req, res) => {
   try {
     if (!req.body) {
@@ -23,7 +22,7 @@ const createTestimonial = async (req, res) => {
     }
 
     const imageLocalPath = req.files?.photoUrl?.[0]?.path;
-
+    let photoUrl;
     if (imageLocalPath) {
       const image = await uploadOnCloudinary(imageLocalPath);
       if (!image) {
@@ -65,6 +64,7 @@ const createTestimonial = async (req, res) => {
       .json({ success: false, message: "Internal server error" });
   }
 };
+
 const getAllTestimonials = async (req, res) => {
   try {
     const testimonials = await Testimonial.find();
