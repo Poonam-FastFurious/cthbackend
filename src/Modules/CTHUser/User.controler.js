@@ -10,6 +10,7 @@ import { v2 as cloudinary } from "cloudinary";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
 import dotenv from "dotenv";
 import { Chat } from "../Chats/Chat.model.js";
+import sendEmail from '../../utils/Sendemail.js';
 
 dotenv.config();
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -522,7 +523,11 @@ const approveUser = asyncHandler(async (req, res) => {
   // Set IsApproved to true
   user.IsApproved = true;
   await user.save({ validateBeforeSave: false });
-
+  await sendEmail({
+    email: user.emailAddress,
+    subject: 'User Approval',
+    message:'Your account have been approved by admin you can sign in now',
+  });
   // Automatically add the user to the group
   const groupChat = await Chat.findOne({
     chatName: "HALL 1 (General)",
@@ -557,7 +562,7 @@ const approveUser = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         { isApproved: user.IsApproved },
-        "User approval status updated and added to group successfully"
+        "User approval status updated successfully, email sent."
       )
     );
 });

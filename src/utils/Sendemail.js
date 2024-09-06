@@ -13,7 +13,7 @@ const sendEmail = async (options) => {
       });
 
       const mailOptions = {
-            from: 'Your App <rahulkumarofficial36@gamil.com>',
+            from: process.env.EMAIL_USERNAME,
             to: options.email,
             subject: options.subject,
             text: options.message,
