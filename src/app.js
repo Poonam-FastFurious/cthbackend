@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "https://towlhall.dev-testing-team.tech",
+    origin: "http://localhost:5173",
 
     credentials: true,
   },
@@ -43,8 +43,6 @@ import messageRoutes from "../src/Modules/Mesaage/Message.routes.js";
 import mediaRoutes from "../src/Modules/Media/Media.routes.js";
 import { User } from "./Modules/CTHUser/User.model.js";
 import { asyncHandler } from "./utils/asyncHandler.js";
-
-//routes declearetion
 app.use("/api/v1/admin", adminrouter);
 app.use("/api/v1/user", userrouter);
 app.use("/api/v1/Banner", Banner);

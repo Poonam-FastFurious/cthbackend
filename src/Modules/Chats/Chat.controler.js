@@ -247,7 +247,21 @@ const removeFromGroup = asyncHandler(async (req, res) => {
     res.json(removed);
   }
 });
+const getAllGroupChats = asyncHandler(async (req, res) => {
+  try {
+    // Fetch all group chats
+    const groupChats = await Chat.find({ isGroupChat: true })
+      .populate("users", "-password") // Populate users, excluding passwords
+      .populate("groupAdmin", "-password") // Populate group admin, excluding passwords
+      .sort({ updatedAt: -1 }); // Sort by most recent update
 
+    // Respond with all group chats
+    res.status(200).json(groupChats);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
 export {
   accessChat,
   fetchChats,
@@ -257,4 +271,5 @@ export {
   removeFromGroup,
   fetchSingleChat,
   createCTHMainGroup,
+  getAllGroupChats,
 };
