@@ -36,6 +36,9 @@ const messageModel = mongoose.Schema(
     deleted: {
       type: Boolean,
     },
+    isPinned: {
+      type: Boolean,
+    },
   },
   { timestamps: true }
 );

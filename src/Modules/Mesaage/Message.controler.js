@@ -1,12 +1,11 @@
-
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { Message } from "./Message.model.js";
-import { mongoose } from "mongoose";
 import { User } from "../CTHUser/User.model.js";
 import { Chat } from "../Chats/Chat.model.js";
 import { Media } from "../Media/Media.model.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js"; // Adjust the import path as necessary
+import { ApiError } from "../../utils/ApiError.js";
 const sendMessage = asyncHandler(async (req, res) => {
   const { content, chatId } = req.body;
   const files = req.files;
@@ -36,7 +35,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     }
   }
 
-  if (files&&files.documents) {
+  if (files && files.documents) {
     for (const file of files.documents) {
       const uploadedDocument = await uploadOnCloudinary(file.path);
 
@@ -47,7 +46,7 @@ const sendMessage = asyncHandler(async (req, res) => {
         chat: chatId,
         sender: req.user._id,
         fileType: "document",
-        localPath:file.path,
+        localPath: file.path,
         filePath: uploadedDocument.url,
         originalName: file.originalname,
       });
@@ -61,7 +60,7 @@ const sendMessage = asyncHandler(async (req, res) => {
     content: content,
     chat: chatId,
     media: mediaIds,
-    sentOn:Date.now()
+    sentOn: Date.now(),
   };
 
   try {
@@ -102,8 +101,8 @@ const allMessages = asyncHandler(async (req, res) => {
 const deliveredOn = asyncHandler(async (req, res) => {
   const messageIds = req.body.messageIds;
   try {
-    const Data={
-      deliveredOn:Date.now()
+    const Data = {
+      deliveredOn: Date.now(),
     };
     const updatedMessages = await Promise.all(
       messageIds.map(async (messageId) => {
@@ -113,7 +112,7 @@ const deliveredOn = asyncHandler(async (req, res) => {
         });
       })
     );
-  res.status(200).json(updatedMessages);
+    res.status(200).json(updatedMessages);
   } catch (error) {
     console.log(error);
     res.status(500);
@@ -124,7 +123,7 @@ const readOn = asyncHandler(async (req, res) => {
   const messageIds = req.body.messageIds; // Expecting an array of message IDs
   try {
     const Data = {
-      readOn: Date.now()
+      readOn: Date.now(),
     };
 
     // Update each message in parallel using Promise.all
@@ -145,5 +144,25 @@ const readOn = asyncHandler(async (req, res) => {
   }
 });
 
+const pinMessage = asyncHandler(async (req, res) => {
+  const { messageId } = req.query;
 
-export { sendMessage, allMessages, upload,readOn,deliveredOn };
+  // Check if the message exists
+  const message = await Message.findById(messageId).populate("chat");
+  if (!message) {
+    throw new ApiError(404, "Message not found");
+  }
+
+  // Toggle the isPinned status
+  message.isPinned = !message.isPinned;
+  await message.save();
+
+  res.json({
+    success: true,
+    message: "Message pinned status updated",
+    isPinned: message.isPinned,
+    chatId: message.chat._id, // Send the chat ID back in the response
+  });
+});
+
+export { sendMessage, allMessages, upload, readOn, deliveredOn, pinMessage };

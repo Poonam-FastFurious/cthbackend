@@ -7,6 +7,7 @@ import {
   fetchChats,
   fetchSingleChat,
   getAllGroupChats,
+  getGroupInfo,
   removeFromGroup,
   renameGroup,
 } from "./Chat.controler.js";
@@ -20,5 +21,6 @@ router.route("/groupcreate").post(verifyJWT, createGroupChat);
 router.route("/renamegroup").patch(verifyJWT, renameGroup);
 router.route("/groupadduser").patch(verifyJWT, addToGroup);
 router.route("/groupremoveuser").patch(verifyJWT, removeFromGroup);
+router.route("/groupinfo").get(verifyJWT, getGroupInfo);
 
 export default router;

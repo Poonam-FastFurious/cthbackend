@@ -58,7 +58,7 @@ const createCTHMainGroup = async () => {
         chatName: "HALL 1 (General)",
         users: users.map((user) => user._id),
         isGroupChat: true,
-        groupAdmin: "66d6edd2f3ee77ff9d35afe2", // Setting the first user as the group admin
+        groupAdmin: "66d6edd2f3ee77ff9d35afe2",
       });
 
       console.log(
@@ -139,7 +139,7 @@ const createGroupChat = asyncHandler(async (req, res) => {
       if (!user) {
         return res.status(400).send({ message: "User not found" });
       }
-      if (user.status === "private") {
+      if (user.Status === "private") {
         return res
           .status(400)
           .send({ message: `User ${user.username}'s account is private` });
@@ -262,6 +262,39 @@ const getAllGroupChats = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 });
+const getGroupInfo = asyncHandler(async (req, res) => {
+  try {
+    const { groupId } = req.query; // Extract group ID from request parameters
+
+    // Fetch the specific group chat using the group ID
+    const groupChat = await Chat.findOne({ _id: groupId, isGroupChat: true })
+      .populate("users", "-password") // Populate users, excluding passwords
+      .populate("groupAdmin", "-password"); // Populate group admin, excluding passwords
+
+    // Check if the group exists
+    if (!groupChat) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Get the total number of members in the group
+    const totalMembers = groupChat.users.length;
+
+    // Prepare the response
+    const groupInfo = {
+      groupName: groupChat.chatName,
+      totalMembers,
+      admin: groupChat.groupAdmin,
+      users: groupChat.users,
+    };
+
+    // Respond with group information
+    res.status(200).json(groupInfo);
+  } catch (error) {
+    res.status(400);
+    throw new Error(error.message);
+  }
+});
+
 export {
   accessChat,
   fetchChats,
@@ -272,4 +305,5 @@ export {
   fetchSingleChat,
   createCTHMainGroup,
   getAllGroupChats,
+  getGroupInfo,
 };
