@@ -11,6 +11,7 @@ import { upload } from "../../middlewares/FileUpload.middlwares.js";
 import dotenv from "dotenv";
 import { Chat } from "../Chats/Chat.model.js";
 import sendEmail from "../../utils/Sendemail.js";
+import { TownhallProfile } from "../Townhallprofile/Townhallprofile.model.js";
 
 dotenv.config();
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -34,11 +35,13 @@ const generateAccessAndRefereshTokens = async (userId) => {
     );
   }
 };
+
 const registerUser = asyncHandler(async (req, res) => {
   try {
     const {
       firstName,
       lastName,
+      displayName,
       contactNumber,
       emailAddress,
       linkedinProfile,
@@ -52,33 +55,38 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Validate required fields
     if (
-      [firstName, lastName, contactNumber, emailAddress].some(
+      [firstName, lastName, displayName, contactNumber, emailAddress].some(
         (field) => field?.trim() === ""
       )
     ) {
       throw new ApiError(
         400,
-        "First Name, Last Name, Contact Number, and Email Address are required"
+        "First Name, Last Name, Display Name, Contact Number, and Email Address are required"
       );
     }
 
-    // Check if user already exists (by username or email)
-    const existedUser = await User.findOne({
-      $or: [{ contactNumber }, { emailAddress }],
-    });
-
-    if (existedUser) {
+    // Check if contact number already exists
+    const contactExists = await User.findOne({ contactNumber });
+    if (contactExists) {
       throw new ApiError(
         409,
-        "User with the same contact number or email already exists"
+        "User with the same contact number already exists"
       );
     }
 
-    // Create username
+    // Check if email address already exists
+    const emailExists = await User.findOne({ emailAddress });
+    if (emailExists) {
+      throw new ApiError(
+        409,
+        "User with the same email address already exists"
+      );
+    }
+
+    // Create a unique username
     let username = `CTHUSER${firstName}`;
     let userExists = await User.findOne({ username });
 
-    // If username exists, append a unique identifier (e.g., timestamp or random number)
     while (userExists) {
       username = `CTHUSER${firstName}${Math.floor(Math.random() * 10000)}`;
       userExists = await User.findOne({ username });
@@ -88,6 +96,7 @@ const registerUser = asyncHandler(async (req, res) => {
     const user = await User.create({
       firstName,
       lastName,
+      displayName,
       username,
       contactNumber,
       emailAddress,
@@ -101,7 +110,7 @@ const registerUser = asyncHandler(async (req, res) => {
       OTP: "123456",
     });
 
-    // Fetch created user without password and refreshToken fields
+    // Fetch created user without refreshToken fields
     const createdUser = await User.findById(user._id).select("-refreshToken");
 
     if (!createdUser) {
@@ -111,13 +120,40 @@ const registerUser = asyncHandler(async (req, res) => {
       );
     }
 
+    // Create TownhallProfile for the new user
+    const userProfile = await TownhallProfile.create({
+      userId: createdUser._id,
+      displayName: createdUser.displayName,
+      skill: createdUser.skills,
+      linkedinProfile: createdUser.linkedinProfile,
+      honoursAndCertifications: createdUser.honoursAndCertifications,
+    });
+
+    if (!userProfile) {
+      throw new ApiError(
+        500,
+        "Something went wrong while creating the user profile"
+      );
+    }
+
     // Return success response
     return res
       .status(201)
       .json(new ApiResponse(201, createdUser, "User registered successfully"));
   } catch (err) {
-    // Handle the error and send response to frontend
-    ApiError.handleError(err, res);
+    // Handle specific ApiError instances
+    if (err instanceof ApiError) {
+      return res
+        .status(err.statusCode)
+        .json({ success: false, message: err.message });
+    }
+
+    // Generic server error for unexpected issues
+    console.error("Unexpected error:", err);
+    res.status(500).json({
+      success: false,
+      message: "An unexpected error occurred. Please try again later.",
+    });
   }
 });
 
@@ -141,31 +177,35 @@ const loginUser = async (req, res) => {
       );
     }
   };
-  const { contactNumber, emailAddress, OTP } = req.body;
-  const user = await User.findOne({
-    $or: [{ contactNumber }, { emailAddress }],
-  });
-  try {
-    if (!user.IsApproved) {
-      throw new ApiError(
-        400,
-        "User Does not have permission please contact Admin"
-      );
-    }
 
+  const { contactNumber, emailAddress, OTP } = req.body;
+
+  try {
+    // Ensure that contactNumber or emailAddress is provided
     if (!contactNumber && !emailAddress) {
       throw new ApiError(400, "Contact number or email is required");
     }
 
     // Find the user by contact number or email address
+    const user = await User.findOne({
+      $or: [{ contactNumber }, { emailAddress }],
+    });
 
+    // Check if user exists
     if (!user) {
       throw new ApiError(404, "User does not exist");
     }
 
+    // Check if the user is approved
+    if (!user.IsApproved) {
+      throw new ApiError(
+        400,
+        "User does not have permission; please contact Admin"
+      );
+    }
+
     // Validate OTP
     const isPasswordValid = await user.isOTPCorrect(OTP);
-
     if (!isPasswordValid) {
       throw new ApiError(401, "Invalid user credentials");
     }
@@ -215,6 +255,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
 const logoutUser = async (req, res) => {
   try {
     // Assuming you have the user ID available in the request body or query parameters
@@ -339,7 +380,9 @@ const deleteUser = asyncHandler(async (req, res) => {
   if (!deletedUser) {
     throw new ApiError(404, "User not found");
   }
-
+  await TownhallProfile.deleteOne({
+    userId: new mongoose.Types.ObjectId(userId),
+  }); // Convert userId to ObjectId
   return res
     .status(200)
     .json(new ApiResponse(200, null, "User deleted successfully"));

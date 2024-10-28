@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "https://towlhall.dev-testing-team.tech",
+    origin: "http://localhost:5173",
 
     credentials: true,
   },
@@ -28,6 +28,7 @@ app.use(cookieParser());
 // Routes import
 import adminrouter from "../src/Modules/Admin/Admin.routes.js";
 import userrouter from "../src/Modules/CTHUser/User.routes.js";
+import townhallprofile from "../src/Modules/Townhallprofile/Townhallprofile.routes.js";
 import Banner from "../src/Modules/Banner/Banner.routes.js";
 import privacy from "../src/Modules/PrivacyPolicy/Privacypolicy.routes.js";
 import termscondtion from "../src/Modules/TermAndConditions/Termscondition.routes.js";
@@ -45,6 +46,7 @@ import { User } from "./Modules/CTHUser/User.model.js";
 import { asyncHandler } from "./utils/asyncHandler.js";
 app.use("/api/v1/admin", adminrouter);
 app.use("/api/v1/user", userrouter);
+app.use("/api/v1/townhalluser", townhallprofile);
 app.use("/api/v1/Banner", Banner);
 app.use("/api/v1/privacy", privacy);
 app.use("/api/v1/terms", termscondtion);
