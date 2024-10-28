@@ -125,6 +125,8 @@ const registerUser = asyncHandler(async (req, res) => {
       userId: createdUser._id,
       displayName: createdUser.displayName,
       skill: createdUser.skills,
+      gender: createdUser.gender,
+      email: createdUser.emailAddress,
       linkedinProfile: createdUser.linkedinProfile,
       honoursAndCertifications: createdUser.honoursAndCertifications,
     });
@@ -299,15 +301,34 @@ const logoutUser = async (req, res) => {
   }
 };
 const getAllUsers = asyncHandler(async (req, res) => {
+  // Step 1: Fetch all users
   const users = await User.find({}).select("-OTP -refreshToken");
 
-  if (!users) {
+  if (!users || users.length === 0) {
     throw new ApiError(404, "No users found");
   }
 
+  // Step 2: Fetch all profiles for the users
+  const userIds = users.map((user) => user._id); // Get user IDs
+  const profiles = await TownhallProfile.find({ userId: { $in: userIds } }); // Fetch profiles that match user IDs
+
+  // Step 3: Map profiles to users
+  const usersWithProfiles = users.map((user) => {
+    const userProfile = profiles.find(
+      (profile) => profile.userId.toString() === user._id.toString()
+    );
+    return {
+      ...user.toObject(), // Convert user to a plain object
+      profile: userProfile || null, // Add profile to user
+    };
+  });
+
+  // Step 4: Return the users with profiles
   return res
     .status(200)
-    .json(new ApiResponse(200, users, "All users fetched successfully"));
+    .json(
+      new ApiResponse(200, usersWithProfiles, "All users fetched successfully")
+    );
 });
 
 const updateUser = asyncHandler(async (req, res) => {

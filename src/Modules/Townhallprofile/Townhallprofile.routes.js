@@ -10,7 +10,7 @@ const router = Router();
 
 router.route("/townhallprofile").get(getAllTownhallProfiles);
 router.route("/townhall").get(getTownhallProfileByUserId);
-router.route("/Update").post(updateProfile);
+router.route("/Update").patch(updateProfile);
 router.route("/privacy").post(updateProfilePrivacy);
 
 export default router;
