@@ -50,46 +50,45 @@ export const updateProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Profile not found");
   }
 
-  // Prepare the update object for TownhallProfile
-  const updateProfileData = {
-    displayName: displayName || profile.displayName,
-    skill: skill || profile.skill,
-    linkedinProfile: linkedinProfile || profile.linkedinProfile,
-    email: email || profile.email,
-    gender: gender || profile.gender,
-    honoursAndCertifications:
-      honoursAndCertifications || profile.honoursAndCertifications,
-    about: about || profile.about,
+  // Function to build update data dynamically
+  const buildUpdateData = (data) => {
+    return Object.keys(data).reduce((acc, key) => {
+      if (data[key] !== undefined) acc[key] = data[key];
+      return acc;
+    }, {});
   };
+
+  // Prepare update data for TownhallProfile
+  const updateProfileData = buildUpdateData({
+    displayName,
+    skill,
+    linkedinProfile,
+    email,
+    gender,
+    honoursAndCertifications,
+    about,
+  });
 
   // Update the TownhallProfile
   const updatedProfile = await TownhallProfile.findOneAndUpdate(
     { userId },
     updateProfileData,
-    {
-      new: true,
-      runValidators: true,
-    }
+    { new: true, runValidators: true }
   );
 
   if (!updatedProfile) {
     throw new ApiError(500, "Something went wrong while updating the profile");
   }
 
-  // Prepare the update object for User
-  const updateUserData = {
-    firstName: firstName || undefined,
-    lastName: lastName || undefined,
-    displayName: displayName || undefined,
-    gender: gender || undefined,
-    linkedinProfile: linkedinProfile || undefined,
-    honoursAndCertifications: honoursAndCertifications || undefined,
-  };
-
-  // Remove undefined properties to avoid overwriting with undefined
-  Object.keys(updateUserData).forEach(
-    (key) => updateUserData[key] === undefined && delete updateUserData[key]
-  );
+  // Prepare update data for User
+  const updateUserData = buildUpdateData({
+    firstName,
+    lastName,
+    displayName,
+    gender,
+    linkedinProfile,
+    honoursAndCertifications,
+  });
 
   // Update the User model
   const updatedUser = await User.findByIdAndUpdate(userId, updateUserData, {
