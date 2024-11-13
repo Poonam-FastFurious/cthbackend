@@ -12,6 +12,7 @@ import dotenv from "dotenv";
 import { Chat } from "../Chats/Chat.model.js";
 import sendEmail from "../../utils/Sendemail.js";
 import { TownhallProfile } from "../Townhallprofile/Townhallprofile.model.js";
+import { uploadToS3 } from "../../utils/S3Service.js";
 
 dotenv.config();
 const generateAccessAndRefereshTokens = async (userId) => {
@@ -445,33 +446,34 @@ const uploadProfilePhoto = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "User not found");
   }
-  const imageLocalPath = req.files?.profilePhoto[0]?.path;
 
-  if (!imageLocalPath) {
-    throw new ApiError(400, "Image files are required");
+  const file = req.files?.profilePhoto[0];
+  if (!file) {
+    throw new ApiError(400, "Image file is required");
   }
 
-  const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+  // Upload the profile photo to S3 directly from the buffer
+  const uploadedImage = await uploadToS3(file.buffer, file.originalname);
 
   if (!uploadedImage) {
-    throw new ApiError(400, "Failed to upload image");
+    throw new ApiError(400, "Failed to upload image to S3");
   }
 
-  // Delete old profile photo if it exists
+  // Delete the old profile photo if it exists
   if (user.profilePhoto) {
-    const oldPublicId = user.profilePhoto.split("/").pop().split(".")[0];
+    // If there was an old profile photo, delete it from S3 (if applicable)
+    const oldPhotoKey = user.profilePhoto.split("/").pop().split(".")[0];
 
     try {
-      await cloudinary.uploader.destroy(oldPublicId);
-      console.log("Old profile photo deleted successfully from Cloudinary");
+      await deleteFromS3(oldPhotoKey); // Custom function to delete from S3 (you need to implement this)
+      console.log("Old profile photo deleted successfully from S3");
     } catch (error) {
-      console.error("Error deleting old profile photo from Cloudinary:", error);
+      console.error("Error deleting old profile photo from S3:", error);
     }
   }
-  // Save the new profile photo
 
-  // Update the user's profile photo path in the database
-  const updatedData = { profilePhoto: uploadedImage.url };
+  // Save the new profile photo URL in the user's document
+  const updatedData = { profilePhoto: uploadedImage.Location }; // S3 URL
   const updatedUser = await User.findByIdAndUpdate(userId, updatedData, {
     new: true,
     runValidators: true,
@@ -487,6 +489,7 @@ const uploadProfilePhoto = asyncHandler(async (req, res) => {
       )
     );
 });
+
 const removeProfilePhoto = asyncHandler(async (req, res) => {
   const userId = req.params.userId || req.body.userId || req.query.userId;
 

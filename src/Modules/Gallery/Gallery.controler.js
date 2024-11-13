@@ -1,6 +1,6 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
+import { uploadToS3 } from "../../utils/S3Service.js";
 import { Gallery } from "./Gallery.model.js"; // Import your Gallery model
 
 const uploadGalleryImage = asyncHandler(async (req, res) => {
@@ -15,18 +15,23 @@ const uploadGalleryImage = asyncHandler(async (req, res) => {
       throw new ApiError(400, "All fields are required");
     }
 
-    const imageLocalPath = req.files?.image[0]?.path;
-    if (!imageLocalPath) {
+    const imageFile = req.files?.image?.[0];
+    if (!imageFile) {
       throw new ApiError(400, "Image file is required");
     }
 
-    const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+    // Upload image to S3
+    const uploadedImage = await uploadToS3(
+      imageFile.buffer,
+      imageFile.originalname
+    );
     if (!uploadedImage) {
-      throw new ApiError(500, "Failed to upload image");
+      throw new ApiError(500, "Failed to upload image to S3");
     }
 
+    // Create new gallery item with S3 image URL
     const galleryItem = await Gallery.create({
-      image: uploadedImage.url,
+      image: uploadedImage.Location, // S3 image URL
       title,
       status,
     });
@@ -45,6 +50,7 @@ const uploadGalleryImage = asyncHandler(async (req, res) => {
     });
   }
 });
+
 const getAllGalleryImages = asyncHandler(async (req, res) => {
   try {
     const galleryImages = await Gallery.find(); // Fetch all gallery images
@@ -94,9 +100,9 @@ const deleteGalleryImage = asyncHandler(async (req, res) => {
 });
 const editGalleryImage = asyncHandler(async (req, res) => {
   try {
-    const { id } = req.body;
-    const { title, status } = req.body;
+    const { id, title, status } = req.body;
 
+    // Check if gallery image exists
     const galleryImage = await Gallery.findById(id);
     if (!galleryImage) {
       return res
@@ -104,18 +110,25 @@ const editGalleryImage = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Gallery image not found" });
     }
 
+    // Update title and status if provided
     if (title) galleryImage.title = title;
     if (status) galleryImage.status = status;
 
+    // If a new image is provided, upload it to S3
     if (req.files && req.files.image) {
-      const imageLocalPath = req.files.image[0].path;
-      const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+      const imageFile = req.files.image[0];
+      const uploadedImage = await uploadToS3(
+        imageFile.buffer,
+        imageFile.originalname
+      );
       if (!uploadedImage) {
-        throw new Error("Failed to upload image");
+        throw new Error("Failed to upload image to S3");
       }
-      galleryImage.image = uploadedImage.url;
+      // Update the image URL in the gallery document
+      galleryImage.image = uploadedImage.Location; // S3 image URL
     }
 
+    // Save the updated gallery item
     await galleryImage.save();
 
     return res.json({
@@ -125,11 +138,13 @@ const editGalleryImage = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error("Error during gallery image edit:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 });
+
 export {
   uploadGalleryImage,
   getAllGalleryImages,

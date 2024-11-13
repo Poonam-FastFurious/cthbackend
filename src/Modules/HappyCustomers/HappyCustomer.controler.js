@@ -1,6 +1,7 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
+import { uploadToS3 } from "../../utils/S3Service.js";
 import { HappyCustomer } from "./HappyCustomer.model.js";
 
 const createHappyCustomer = async (req, res) => {
@@ -21,14 +22,15 @@ const createHappyCustomer = async (req, res) => {
     }
 
     // Handle image upload if a photoUrl is provided
-    const imageLocalPath = req.files?.photoUrl?.[0]?.path;
+    const imageFile = req.files?.photoUrl?.[0];
     let photoUrl;
-    if (imageLocalPath) {
-      const image = await uploadOnCloudinary(imageLocalPath);
-      if (!image) {
-        throw new ApiError(400, "Failed to upload image");
+    if (imageFile) {
+      // Upload image to S3
+      const uploadedImage = await uploadToS3(imageFile.buffer, imageFile.originalname);
+      if (!uploadedImage) {
+        throw new ApiError(400, "Failed to upload image to S3");
       }
-      photoUrl = image.url;
+      photoUrl = uploadedImage.Location; // This holds the URL of the image in S3
     }
 
     // Create a new HappyCustomer entry
@@ -67,6 +69,7 @@ const createHappyCustomer = async (req, res) => {
       .json({ success: false, message: "Internal server error" });
   }
 };
+
 const getAllHappyCustomers = async (req, res) => {
   try {
     // Fetch all happy customer entries from the database

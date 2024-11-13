@@ -58,7 +58,7 @@ const createCTHMainGroup = async () => {
         chatName: "HALL 1 (General)",
         users: users.map((user) => user._id),
         isGroupChat: true,
-        groupAdmin: "66d6edd2f3ee77ff9d35afe2",
+        groupAdmin: "67344dd51ec5b547099ba554",
       });
 
       console.log(

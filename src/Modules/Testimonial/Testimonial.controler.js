@@ -4,6 +4,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
 import { Testimonial } from "./Testimonial.modal.js";
+import { uploadToS3 } from "../../utils/S3Service.js";
 const createTestimonial = async (req, res) => {
   try {
     if (!req.body) {
@@ -21,22 +22,29 @@ const createTestimonial = async (req, res) => {
       throw new ApiError(409, "Testimonial from this email already exists");
     }
 
-    const imageLocalPath = req.files?.photoUrl?.[0]?.path;
-    let photoUrl;
-    if (imageLocalPath) {
-      const image = await uploadOnCloudinary(imageLocalPath);
-      if (!image) {
-        throw new ApiError(400, "Failed to upload image");
-      }
-      photoUrl = image.url;
+    const imageFile = req.files?.photoUrl?.[0];
+
+    if (!imageFile) {
+      throw new ApiError(400, "Image file is required");
     }
+
+    // Upload image to S3
+    const uploadedImage = await uploadToS3(
+      imageFile.buffer,
+      imageFile.originalname
+    );
+    if (!uploadedImage) {
+      throw new ApiError(500, "Failed to upload image to S3");
+    }
+
+    const photoUrl = uploadedImage.Location; // This will hold the S3 URL
 
     const testimonial = await Testimonial.create({
       name,
       message,
       rating,
       email,
-      photoUrl,
+      photoUrl, // Store the URL here
     });
 
     const { _id: _, ...createdTestimonial } = testimonial.toObject();

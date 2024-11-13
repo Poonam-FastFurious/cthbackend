@@ -1,15 +1,15 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const mediaSchema = new mongoose.Schema(
   {
     chat: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Chat',
+      ref: "Chat",
       required: true,
     },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
     },
     fileType: {
@@ -22,7 +22,6 @@ const mediaSchema = new mongoose.Schema(
     },
     localPath: {
       type: String,
-      required: true,
     },
     originalName: {
       type: String,
@@ -34,4 +33,4 @@ const mediaSchema = new mongoose.Schema(
   }
 );
 
-export const Media = mongoose.model('Media', mediaSchema);
+export const Media = mongoose.model("Media", mediaSchema);

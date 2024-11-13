@@ -4,6 +4,7 @@ import { ApiError } from "../../utils/ApiError.js";
 import { AssociateMember } from "./Associate.model.js";
 import { User } from "../CTHUser/User.model.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
+import { uploadToS3 } from "../../utils/S3Service.js";
 
 const addAssociateMember = asyncHandler(async (req, res) => {
   try {
@@ -35,15 +36,18 @@ const addAssociateMember = asyncHandler(async (req, res) => {
       throw new ApiError(409, "User is already an associate member");
     }
 
-    // Handle image upload
-    const imageLocalPath = req.files?.image[0]?.path;
-    if (!imageLocalPath) {
+    // Handle image upload to S3
+    const imageFile = req.files?.image?.[0];
+    if (!imageFile) {
       throw new ApiError(400, "Image file is required");
     }
 
-    const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+    const uploadedImage = await uploadToS3(
+      imageFile.buffer,
+      imageFile.originalname
+    );
     if (!uploadedImage) {
-      throw new ApiError(500, "Failed to upload image");
+      throw new ApiError(500, "Failed to upload image to S3");
     }
 
     // Create associate member object
@@ -52,7 +56,7 @@ const addAssociateMember = asyncHandler(async (req, res) => {
       experience,
       designation,
       status,
-      image: uploadedImage.url, // Save the image URL
+      image: uploadedImage.Location, // Save the image URL from S3
     });
 
     // Fetch created associate member with user details
