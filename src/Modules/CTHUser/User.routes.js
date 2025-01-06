@@ -12,8 +12,10 @@ import {
   updateUserPrivacy,
   removeProfilePhoto,
   approveUser,
+  requestOTP,
 } from "./User.controler.js";
 import { upload } from "../../middlewares/FileUpload.middlwares.js";
+import { sendOtp } from "../../utils/SendSms.js";
 
 const router = Router();
 
@@ -53,4 +55,6 @@ router.route("/profilephoto").post(
 );
 router.route("/privacy").patch(updateUserPrivacy);
 router.route("/approveuser").patch(approveUser);
+router.route("/send-otp").post(sendOtp);
+router.route("/sendsms").post(requestOTP);
 export default router;

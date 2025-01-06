@@ -36,7 +36,9 @@ const generateAccessAndRefereshTokens = async (userId) => {
     );
   }
 };
-
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 const registerUser = asyncHandler(async (req, res) => {
   try {
     const {
@@ -108,7 +110,6 @@ const registerUser = asyncHandler(async (req, res) => {
       gender,
       honoursAndCertifications,
       IsApproved,
-      OTP: "123456",
     });
 
     // Fetch created user without refreshToken fields
@@ -224,6 +225,7 @@ const loginUser = async (req, res) => {
     );
     user.LoginTime = Date.now();
     user.Active = true;
+
     await user.save({ validateBeforeSave: false });
 
     // Set options for cookies
@@ -641,7 +643,54 @@ const approveUser = asyncHandler(async (req, res) => {
       )
     );
 });
+const requestOTP = async (req, res) => {
+  try {
+    const { emailAddress } = req.body;
 
+    if (!emailAddress) {
+      throw new ApiError(400, "Email address is required");
+    }
+
+    const user = await User.findOne({ emailAddress });
+
+    if (!user) {
+      throw new ApiError(404, "Email does not exist. Please sign up");
+    }
+
+    const otp = generateOTP();
+
+    user.OTP = otp;
+    user.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+    await user.save();
+
+    // Send OTP via email
+    const emailOptions = {
+      email: emailAddress,
+      subject: "Your OTP Code",
+      message: `Your otp for Complaince Townhall login is: ${otp}. It is valid for 10 minutes.`,
+    };
+    console.log("Plain OTP Sent to User:", otp); // Debugging log
+    await sendEmail(emailOptions);
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "OTP sent to your email"));
+  } catch (error) {
+    console.error("Error during OTP request:", error);
+
+    // Handle specific errors
+    if (error instanceof ApiError) {
+      return res
+        .status(error.statusCode)
+        .json({ success: false, message: error.message });
+    }
+
+    // Handle other unexpected errors
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
 export {
   registerUser,
   loginUser,
@@ -656,4 +705,5 @@ export {
   upload,
   removeProfilePhoto,
   approveUser,
+  requestOTP,
 };

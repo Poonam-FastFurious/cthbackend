@@ -73,7 +73,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
     skills: {
-      type: [String], // Array of skills
+      type: [String],
     },
     gender: {
       type: String,
@@ -86,8 +86,8 @@ const userSchema = new mongoose.Schema(
     },
     OTP: {
       type: String,
-      default: "12345",
     },
+    otpExpires: { type: Date },
   },
   {
     timestamps: true, // Automatically manage createdAt and updatedAt fields
