@@ -1,178 +1,178 @@
-import { Slider } from "./Slider.modal.js";
-import { ApiError } from "../../utils/ApiError.js";
-import { asyncHandler } from "../../utils/asyncHandler.js";
+// import { Slider } from "./Slider.modal.js";
+// import { ApiError } from "../../utils/ApiError.js";
+// import { asyncHandler } from "../../utils/asyncHandler.js";
 
-import { uploadToS3 } from "../../utils/S3Service.js";
+// import { uploadToS3 } from "../../utils/S3Service.js";
+
+// // export const addSlider = asyncHandler(async (req, res) => {
+// //       try {
+// //             if (!req.body) {
+// //                   throw new ApiError(400, "Request body is missing or empty");
+// //             }
+
+// //             const { title, details, link } = req.body;
+
+// //             if (![title, details, link].every((field) => field?.trim())) {
+// //                   throw new ApiError("All fields are required");
+// //             }
+
+// //             const imageLocalPath = req.files?.sliderImage[0]?.path;
+// //             if (!imageLocalPath) {
+// //                   throw new Error("Slider image file is required");
+// //             }
+
+// //             const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+// //             if (!uploadedImage) {
+// //                   throw new Error("Failed to upload slider image");
+// //             }
+
+// //             const slider = await Slider.create({
+// //                   sliderImage: uploadedImage.url,
+// //                   title,
+// //                   details,
+// //                   link,
+// //             });
+
+// //             return res.status(201).json({
+// //                   success: true,
+// //                   data: slider,
+// //                   message: "Slider added successfully",
+// //             });
+// //       } catch (error) {
+// //             console.error("Error during slider addition:", error);
+
+// //             return res.status(500).json({
+// //                   success: false,
+// //                   message: "Internal server error",
+// //             });
+// //       }
+// // });
 
 // export const addSlider = asyncHandler(async (req, res) => {
-//       try {
-//             if (!req.body) {
-//                   throw new ApiError(400, "Request body is missing or empty");
-//             }
+//   try {
+//     if (!req.body) {
+//       throw new ApiError(400, "Request body is missing or empty");
+//     }
 
-//             const { title, details, link } = req.body;
+//     const { title, details, link } = req.body;
 
-//             if (![title, details, link].every((field) => field?.trim())) {
-//                   throw new ApiError("All fields are required");
-//             }
+//     if (![title, details, link].every((field) => field?.trim())) {
+//       throw new ApiError("All fields are required");
+//     }
 
-//             const imageLocalPath = req.files?.sliderImage[0]?.path;
-//             if (!imageLocalPath) {
-//                   throw new Error("Slider image file is required");
-//             }
+//     const imageLocalPath = req.files?.sliderImage[0]?.path;
+//     if (!imageLocalPath) {
+//       throw new Error("Slider image file is required");
+//     }
 
-//             const uploadedImage = await uploadOnCloudinary(imageLocalPath);
-//             if (!uploadedImage) {
-//                   throw new Error("Failed to upload slider image");
-//             }
+//     // Upload image to AWS S3
+//     const uploadedImage = await uploadToS3(imageLocalPath);
+//     if (!uploadedImage || !uploadedImage.Location) {
+//       throw new Error("Failed to upload slider image to AWS S3");
+//     }
 
-//             const slider = await Slider.create({
-//                   sliderImage: uploadedImage.url,
-//                   title,
-//                   details,
-//                   link,
-//             });
+//     // Create slider with the S3 image URL
+//     const slider = await Slider.create({
+//       sliderImage: uploadedImage.Location,
+//       title,
+//       details,
+//       link,
+//     });
 
-//             return res.status(201).json({
-//                   success: true,
-//                   data: slider,
-//                   message: "Slider added successfully",
-//             });
-//       } catch (error) {
-//             console.error("Error during slider addition:", error);
+//     // Clean up the local image after uploading to S3
+//     fs.unlinkSync(imageLocalPath);
 
-//             return res.status(500).json({
-//                   success: false,
-//                   message: "Internal server error",
-//             });
-//       }
+//     return res.status(201).json({
+//       success: true,
+//       data: slider,
+//       message: "Slider added successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error during slider addition:", error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Internal server error",
+//     });
+//   }
 // });
 
-export const addSlider = asyncHandler(async (req, res) => {
-  try {
-    if (!req.body) {
-      throw new ApiError(400, "Request body is missing or empty");
-    }
+// export const getAllSliders = asyncHandler(async (req, res) => {
+//   try {
+//     const sliders = await Slider.find();
+//     return res.status(200).json({
+//       success: true,
+//       data: sliders,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching sliders:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
+//   }
+// });
 
-    const { title, details, link } = req.body;
+// export const updateSlider = asyncHandler(async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { title, details, link } = req.body;
 
-    if (![title, details, link].every((field) => field?.trim())) {
-      throw new ApiError("All fields are required");
-    }
+//     // Check if the slider exists
+//     const slider = await Slider.findById(id);
+//     if (!slider) {
+//       throw new ApiError(404, "Slider not found");
+//     }
 
-    const imageLocalPath = req.files?.sliderImage[0]?.path;
-    if (!imageLocalPath) {
-      throw new Error("Slider image file is required");
-    }
+//     // Update the slider fields
+//     slider.title = title;
+//     slider.details = details;
+//     slider.link = link;
 
-    // Upload image to AWS S3
-    const uploadedImage = await uploadToS3(imageLocalPath);
-    if (!uploadedImage || !uploadedImage.Location) {
-      throw new Error("Failed to upload slider image to AWS S3");
-    }
+//     // Save the updated slider
+//     await slider.save();
 
-    // Create slider with the S3 image URL
-    const slider = await Slider.create({
-      sliderImage: uploadedImage.Location,
-      title,
-      details,
-      link,
-    });
+//     return res.status(200).json({
+//       success: true,
+//       data: slider,
+//       message: "Slider updated successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error updating slider:", error);
+//     return res.status(error.statusCode || 500).json({
+//       success: false,
+//       message: error.message || "Internal server error",
+//     });
+//   }
+// });
 
-    // Clean up the local image after uploading to S3
-    fs.unlinkSync(imageLocalPath);
+// // Function to delete a slider
+// export const deleteSlider = asyncHandler(async (req, res) => {
+//   try {
+//     const { id } = req.body; // Assuming id is passed as a query parameter
 
-    return res.status(201).json({
-      success: true,
-      data: slider,
-      message: "Slider added successfully",
-    });
-  } catch (error) {
-    console.error("Error during slider addition:", error);
+//     console.log("Deleting Slider with ID:", id);
 
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
-  }
-});
+//     // Find the banner by id and delete it
+//     const deletedBanner = await Slider.findByIdAndDelete(id);
 
-export const getAllSliders = asyncHandler(async (req, res) => {
-  try {
-    const sliders = await Slider.find();
-    return res.status(200).json({
-      success: true,
-      data: sliders,
-    });
-  } catch (error) {
-    console.error("Error fetching sliders:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-});
+//     if (!deletedBanner) {
+//       console.log("Slider not found with ID:", id);
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Banner not found" });
+//     }
 
-export const updateSlider = asyncHandler(async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { title, details, link } = req.body;
+//     console.log("Slider deleted successfully with ID:", id);
 
-    // Check if the slider exists
-    const slider = await Slider.findById(id);
-    if (!slider) {
-      throw new ApiError(404, "Slider not found");
-    }
-
-    // Update the slider fields
-    slider.title = title;
-    slider.details = details;
-    slider.link = link;
-
-    // Save the updated slider
-    await slider.save();
-
-    return res.status(200).json({
-      success: true,
-      data: slider,
-      message: "Slider updated successfully",
-    });
-  } catch (error) {
-    console.error("Error updating slider:", error);
-    return res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
-  }
-});
-
-// Function to delete a slider
-export const deleteSlider = asyncHandler(async (req, res) => {
-  try {
-    const { id } = req.body; // Assuming id is passed as a query parameter
-
-    console.log("Deleting Slider with ID:", id);
-
-    // Find the banner by id and delete it
-    const deletedBanner = await Slider.findByIdAndDelete(id);
-
-    if (!deletedBanner) {
-      console.log("Slider not found with ID:", id);
-      return res
-        .status(404)
-        .json({ success: false, message: "Banner not found" });
-    }
-
-    console.log("Slider deleted successfully with ID:", id);
-
-    return res.json({
-      success: true,
-      message: "Banner deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error during banner deletion:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
-  }
-});
+//     return res.json({
+//       success: true,
+//       message: "Banner deleted successfully",
+//     });
+//   } catch (error) {
+//     console.error("Error during banner deletion:", error);
+//     return res
+//       .status(500)
+//       .json({ success: false, message: "Internal server error" });
+//   }
+// });

@@ -1,8 +1,9 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
-import { uploadToS3 } from "../../utils/S3Service.js";
+
 import { Banner } from "./Banner.model.js";
+
 
 const uploadBanner = asyncHandler(async (req, res) => {
   try {
@@ -16,23 +17,18 @@ const uploadBanner = asyncHandler(async (req, res) => {
       throw new ApiError("All fields are required");
     }
 
-    const imageFile = req.files?.image?.[0];
-    if (!imageFile) {
+    const imageLocalPath = req.files?.image[0]?.path;
+    if (!imageLocalPath) {
       throw new Error("Image file is required");
     }
 
-    // Upload the image to AWS S3
-    const uploadedImage = await uploadToS3(
-      imageFile.buffer,
-      imageFile.originalname
-    );
-    if (!uploadedImage || !uploadedImage.Location) {
-      throw new Error("Failed to upload image to AWS S3");
+    const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+    if (!uploadedImage) {
+      throw new Error("Failed to upload image");
     }
 
-    // Create a banner with the uploaded image URL from S3
     const banner = await Banner.create({
-      image: uploadedImage.Location, // Use the S3 URL
+      image: uploadedImage.url,
       title,
       link,
       type,
@@ -49,54 +45,10 @@ const uploadBanner = asyncHandler(async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error",
+      message: "Internal server error",
     });
   }
 });
-// const uploadBanner = asyncHandler(async (req, res) => {
-//   try {
-//     if (!req.body) {
-//       throw new ApiError(400, "Request body is missing or empty");
-//     }
-
-//     const { title, link, type, status } = req.body;
-
-//     if (![title, link, status].every((field) => field?.trim())) {
-//       throw new ApiError("All fields are required");
-//     }
-
-//     const imageLocalPath = req.files?.image[0]?.path;
-//     if (!imageLocalPath) {
-//       throw new Error("Image file is required");
-//     }
-
-//     const uploadedImage = await uploadOnCloudinary(imageLocalPath);
-//     if (!uploadedImage) {
-//       throw new Error("Failed to upload image");
-//     }
-
-//     const banner = await Banner.create({
-//       image: uploadedImage.url,
-//       title,
-//       link,
-//       type,
-//       status,
-//     });
-
-//     return res.status(201).json({
-//       success: true,
-//       data: banner,
-//       message: "Banner uploaded successfully",
-//     });
-//   } catch (error) {
-//     console.error("Error during banner upload:", error);
-
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//     });
-//   }
-// });
 const editBanner = asyncHandler(async (req, res) => {
   try {
     const { id } = req.body;
@@ -119,21 +71,13 @@ const editBanner = asyncHandler(async (req, res) => {
 
     // If image is being updated
     if (req.files && req.files.image) {
-      // Use the buffer directly from memory storage
-      const imageFile = req.files.image[0];
-      const uploadedImage = await uploadToS3(
-        imageFile.buffer,
-        imageFile.originalname
-      );
-
-      if (!uploadedImage || !uploadedImage.Location) {
-        throw new Error("Failed to upload image to AWS S3");
+      const imageLocalPath = req.files.image[0].path;
+      const uploadedImage = await uploadOnCloudinary(imageLocalPath);
+      if (!uploadedImage) {
+        throw new Error("Failed to upload image");
       }
-
-      // Update the banner's image with the S3 URL
-      banner.image = uploadedImage.Location;
+      banner.image = uploadedImage.url;
     }
-
     // Save the updated banner
     await banner.save();
 

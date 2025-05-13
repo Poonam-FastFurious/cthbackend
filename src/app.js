@@ -1,13 +1,17 @@
 import express from "express";
+import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
+dotenv.config({
+  path: "./.env",
+});
 const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: "https://chat.compliancetownhall.com",
+    origin: process.env.SOCKET_ORIGIN,
 
     credentials: true,
   },
@@ -33,7 +37,6 @@ import Banner from "../src/Modules/Banner/Banner.routes.js";
 import privacy from "../src/Modules/PrivacyPolicy/Privacypolicy.routes.js";
 import termscondtion from "../src/Modules/TermAndConditions/Termscondition.routes.js";
 import blogs from "../src/Modules/Blog/Blog.routes.js";
-import Sliders from "../src/Modules/Slider/Slider.routes.js";
 import ReturnPolicy from "../src/Modules/ReturnPolicy/ReturnPolicy.routes.js";
 import faqs from "../src/Modules/FAQS/Faq.routes.js";
 import testimonials from "../src/Modules/Testimonial/Testimonial.routes.js";
@@ -53,7 +56,6 @@ app.use("/api/v1/Banner", Banner);
 app.use("/api/v1/privacy", privacy);
 app.use("/api/v1/terms", termscondtion);
 app.use("/api/v1/blog", blogs);
-app.use("/api/v1/slider", Sliders);
 app.use("/api/v1/Returnpolicy", ReturnPolicy);
 app.use("/api/v1/faq", faqs);
 app.use("/api/v1/testimonial", testimonials);

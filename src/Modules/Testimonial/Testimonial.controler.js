@@ -4,7 +4,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
 import { Testimonial } from "./Testimonial.modal.js";
-import { uploadToS3 } from "../../utils/S3Service.js";
+
 const createTestimonial = async (req, res) => {
   try {
     if (!req.body) {
@@ -22,29 +22,23 @@ const createTestimonial = async (req, res) => {
       throw new ApiError(409, "Testimonial from this email already exists");
     }
 
-    const imageFile = req.files?.photoUrl?.[0];
+    const imageLocalPath = req.files?.photoUrl?.[0]?.path;
+    let photoUrl; // ✅ Declare the variable here
 
-    if (!imageFile) {
-      throw new ApiError(400, "Image file is required");
+    if (imageLocalPath) {
+      const image = await uploadOnCloudinary(imageLocalPath);
+      if (!image) {
+        throw new ApiError(400, "Failed to upload image");
+      }
+      photoUrl = image.url;
     }
-
-    // Upload image to S3
-    const uploadedImage = await uploadToS3(
-      imageFile.buffer,
-      imageFile.originalname
-    );
-    if (!uploadedImage) {
-      throw new ApiError(500, "Failed to upload image to S3");
-    }
-
-    const photoUrl = uploadedImage.Location; // This will hold the S3 URL
 
     const testimonial = await Testimonial.create({
       name,
       message,
       rating,
       email,
-      photoUrl, // Store the URL here
+      photoUrl, // Will be `undefined` if not provided, which is fine unless your schema requires it
     });
 
     const { _id: _, ...createdTestimonial } = testimonial.toObject();
@@ -72,6 +66,7 @@ const createTestimonial = async (req, res) => {
       .json({ success: false, message: "Internal server error" });
   }
 };
+
 
 const getAllTestimonials = async (req, res) => {
   try {

@@ -1,19 +1,16 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../../utils/Cloudinary.js";
-import { uploadToS3 } from "../../utils/S3Service.js";
 import { HappyCustomer } from "./HappyCustomer.model.js";
 
 const createHappyCustomer = async (req, res) => {
   try {
-    // Check if the request body is present
     if (!req.body) {
       throw new ApiError(400, "Request body is missing or empty");
     }
 
     const { videoUrl, Name, heading, details } = req.body;
 
-    // Validate required fields
     if (![videoUrl, Name, heading, details].every((field) => field?.trim())) {
       throw new ApiError(
         400,
@@ -21,19 +18,17 @@ const createHappyCustomer = async (req, res) => {
       );
     }
 
-    // Handle image upload if a photoUrl is provided
-    const imageFile = req.files?.photoUrl?.[0];
+    const imageFilePath = req.files?.photoUrl?.[0]?.path;
     let photoUrl;
-    if (imageFile) {
-      // Upload image to S3
-      const uploadedImage = await uploadToS3(imageFile.buffer, imageFile.originalname);
-      if (!uploadedImage) {
-        throw new ApiError(400, "Failed to upload image to S3");
+
+    if (imageFilePath) {
+      const image = await uploadOnCloudinary(imageFilePath);
+      if (!image) {
+        throw new ApiError(400, "Failed to upload image");
       }
-      photoUrl = uploadedImage.Location; // This holds the URL of the image in S3
+      photoUrl = image.url;
     }
 
-    // Create a new HappyCustomer entry
     const happyCustomer = await HappyCustomer.create({
       videoUrl,
       Name,
@@ -44,26 +39,22 @@ const createHappyCustomer = async (req, res) => {
 
     const { _id: _, ...createdHappyCustomer } = happyCustomer.toObject();
 
-    return res
-      .status(201)
-      .json(
-        new ApiResponse(
-          200,
-          createdHappyCustomer,
-          "Happy customer created successfully"
-        )
-      );
+    return res.status(201).json(
+      new ApiResponse(
+        200,
+        createdHappyCustomer,
+        "Happy customer created successfully"
+      )
+    );
   } catch (error) {
     console.error("Error during happy customer creation:", error);
 
-    // Handle known errors
     if (error instanceof ApiError) {
       return res
         .status(error.statusCode)
         .json({ success: false, message: error.message });
     }
 
-    // Handle unexpected errors
     return res
       .status(500)
       .json({ success: false, message: "Internal server error" });
