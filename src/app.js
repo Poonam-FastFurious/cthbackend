@@ -19,7 +19,7 @@ const io = new SocketIOServer(server, {
 
 app.use(
   cors({
-    origin: "*",
+    origin: process.env.CORS_ORIGIN,
     credentials: true,
   })
 );
