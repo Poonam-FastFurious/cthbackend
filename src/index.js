@@ -7,7 +7,7 @@ import { createCTHMainGroup } from "./Modules/Chats/Chat.controler.js";
 dotenv.config({
   path: "./.env",
 });
-///ddfdsf
+
 connectDB()
   .then(() => {
     console.log("mongoose connected successfully ");
